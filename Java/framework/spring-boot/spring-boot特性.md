@@ -21,7 +21,7 @@ public class JdbcTemplateCondition implements Condition {
 }
 ```
 &emsp;&emsp;当你用Java来声明Bean的时候，可以使用这个自定义条件类：
-```java{.line-numbers}
+```java {.line-numbers}
 @Conditional(JdbcTemplateCondition.class)
 public MyService myService() {
 ...
@@ -48,7 +48,7 @@ public MyService myService() {
 |@CondionalOnNotWebApplication|这不是一个Web应用|
 
  &emsp;&emsp;一般来说，无需查看Spring Boot自动配置类的源代码，但为了演示如何使用上表里的注解，我们可以看一下DataSourceAutoConfiguration里的这个片段（这是Spring Boot自动配置库的一部分）：
-```java{.line-numbers}
+```java {.line-numbers}
 @Configuration
 @ConditionalOnClass({ DataSource.class, EmbeddedDatabaseType.class })
 @EnableConfigurationProperties(DataSourceProperties.class)
@@ -58,7 +58,7 @@ public class DataSourceAutoConfiguration {
 }
 ```
 &emsp;&emsp;如你所见，DataSourceAutoConfiguration添加了@Configuration注解，它从其他配置类里导入了一些额外配置，还自己定义了一些Bean。最重要的是，DataSourceAutoConfiguration上添加了@ConditionalOnClass注解，要求Classpath里必须要有DataSource和EmbeddedDatabaseType。如果它们不存在，条件就不成立，DataSourceAutoConfiguration提供的配置都会被忽略掉。DataSourceAutoConfiguration里嵌入了一个JdbcTemplateConfiguration类，自动配置了一个JdbcTemplate Bean：
-```java{.line-numbers}
+```java {.line-numbers}
 @Configuration
 @Conditional(DataSourceAutoConfiguration.DataSourceAvailableCondition.class)
 protected static class JdbcTemplateConfiguration {
