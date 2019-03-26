@@ -1,3 +1,13 @@
+<!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
+
+<!-- code_chunk_output -->
+
+* [Spring Boot 特性](#spring-boot-特性)
+	* [1.条件化配置](#1条件化配置)
+	* [2. 自动化配置](#2-自动化配置)
+
+<!-- /code_chunk_output -->
+
 #Spring Boot 特性
 
 ##1.条件化配置 
@@ -86,3 +96,5 @@ protected static class JdbcTemplateConfiguration {
 1. 因为Classpath里有Tomcat（通过Web起步依赖传递引用），所以会启动一个嵌入式的Tomcat容器，监听8080端口。
 
 &emsp;&emsp;由此可见，Spring Boot自动配置承担起了配置Spring的重任，因此你能专注于编写自己的应用程序。
+
+##2. 自动化配置
