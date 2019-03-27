@@ -25,7 +25,7 @@
 ```
 初始化数据库这个命令和mysql5.7之前的命令不一样了，之前命令是：bin/mysql_install_db --user=mysql，但是之后的版本已经被mysqld --initialize替代发现mysql_install_db没有这个文件，所以在bin下创建这个文件，并且配置权限；
 会提示如下，警告无所谓，这是因为我们的/etc/my.cnf文件没有做修改。关注root的密码成功创建，并执行成功，记住初始密码即可；
-![](resource/image/c8ade3b9-afee-4caa-b1ad-7800a6248476.png)
+![](images/c8ade3b9-afee-4caa-b1ad-7800a6248476.png)
 
 ####1.4、复制或修改配置文件
 ```shell{.line-numbers}

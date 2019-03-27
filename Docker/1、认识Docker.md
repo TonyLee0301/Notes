@@ -56,7 +56,7 @@ Docker 镜像是一个特殊的文件系统，除了提供容器运行时所需�
 ##Docker Registry 公开服务
 Docker Registry 公开服务是开放给用户使用、允许用户管理镜像的 Registry 服 务。一般这类公开服务允许用户免费上传、下载公开的镜像，并可能提供收费服务 供用户管理私有镜像。
 
-最常使用的 Registry 公开服务是官方的 Docker Hub，这也是默认的 Registry，并 拥有大量的高质量的官方镜像。除此以外，还有 CoreOS 的 Quay.io，CoreOS 相 关的镜像存储在这里；Google 的 Google Container Registry，Kubernetes 的镜像 使用的就是这个服务。
+最常使用的 Registry 公开服务是官方的 [Docker Hub](https://hub.docker.com/)，这也是默认的 Registry，并 拥有大量的高质量的官方镜像。除此以外，还有 CoreOS 的 Quay.io，CoreOS 相 关的镜像存储在这里；Google 的 [Google Container Registry](https://cloud.google.com/container-registry/)，[Kubernetes](http://kubernetes.io/) 的镜像 使用的就是这个服务。
 
 由于某些原因，在国内访问这些服务可能会比较慢。国内的一些云服务商提供了针 对 Docker Hub 的镜像服务（ Registry Mirror ），这些镜像服务被称为加速 器。常见的有 阿里云加速器、DaoCloud 加速器 等。使用加速器会直接从国内的地址下载 Docker Hub 的镜像，比直接从 Docker Hub 下载速度会提高很多。在 安装 Docker 一节中有详细的配置方法。
 
