@@ -24,7 +24,7 @@
 [root@localhost mysql]# bin/mysqld --initialize --user=mysql --basedir=/usr/local/mysql --datadir=/usr/local/mysql/data //初始化数据库 
 ```
 初始化数据库这个命令和mysql5.7之前的命令不一样了，之前命令是：bin/mysql_install_db --user=mysql，但是之后的版本已经被mysqld --initialize替代发现mysql_install_db没有这个文件，所以在bin下创建这个文件，并且配置权限；
-        会提示如下，警告无所谓，这是因为我们的/etc/my.cnf文件没有做修改。关注root的密码成功创建，并执行成功，记住初始密码即可；
+会提示如下，警告无所谓，这是因为我们的/etc/my.cnf文件没有做修改。关注root的密码成功创建，并执行成功，记住初始密码即可；
 ![](resource/image/c8ade3b9-afee-4caa-b1ad-7800a6248476.png)
 
 ####1.4、复制或修改配置文件
@@ -91,26 +91,28 @@ ERROR! The server quit without updating PID file (/usr/local/mysql/data/localhos
 
 则需要查看selinux配置，并将SELINUX=enforcing 修改为 SELINUX=disabled，重启系统；
 
-```shell{.line-numbers}
+ ```shell
 [root@localhost mysql]# cat /etc/selinux/config
-**This file controls the state of SELinux on the system.
-SELINUX= can take one of these three values:
-    enforcing - SELinux security policy is enforced.
-    permissive - SELinux prints warnings instead of enforcing.
-     disabled - No SELinux policy is loaded.
-SELINUX=enforcing**
+
+# This file controls the state of SELinux on the system.
+# SELINUX= can take one of these three values:
+#     enforcing - SELinux security policy is enforced.
+#     permissive - SELinux prints warnings instead of enforcing.
+#     disabled - No SELinux policy is loaded.
+#SELINUX=enforcing
 SELINUX=disabled 
-**SELINUXTYPE= can take one of three two values:
-     targeted - Targeted processes are protected,
-     minimum - Modification of targeted policy. Only selected processes are protected. 
-     mls - Multi Level Security protection.**
+# SELINUXTYPE= can take one of three two values:
+#     targeted - Targeted processes are protected,
+#     minimum - Modification of targeted policy. Only selected processes are protected. 
+#     mls - Multi Level Security protection.
 SELINUXTYPE=targeted 
-        再次执行，恭喜，启动成功！
+``` 
+再次执行，恭喜，启动成功！
+ ```shell{.line-numbers} 
 [root@localhost mysql]# service mysql start
 Starting MySQL.Logging to '/usr/local/mysql/data/localhost.localdomain.err'.
 . SUCCESS! 
-```
-
+ ``` 
 #### 2.4、添加环境变量
 ```shell{.line-numbers}
 [root@localhost mysql]# vi /etc/profile
@@ -139,7 +141,7 @@ datadir=/usr/local/mysql
 datadir=/usr/local/mysql/data
 port=3306
 socket=/usr/local/mysql/tpm/mysql.sock
-## Disabling symbolic-links is recommended to prevent assorted security risks
+# Disabling symbolic-links is recommended to prevent assorted security risks
 symbolic-links=0
 # Settings user and group are ignored when systemd is used.
 # If you need to run mysqld under a different user or group,
@@ -157,7 +159,7 @@ pid-file=/var/run/mysql/mysql.pid
 # include all files from the config directory
 #
 !includedir /etc/my.cnf.d
-```
+``` 
 
 修改完后，重启mysqld服务，即可解决此问题。
 解决方案二：　　
