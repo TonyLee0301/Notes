@@ -1,6 +1,6 @@
 #MySql 安装
-    下载地址：https://dev.mysql.com/downloads/mysql/
-    选择对应的版本下载；
+&ensp;&#8194;下载地址：https://dev.mysql.com/downloads/mysql/
+&ensp;&#8194;选择对应的版本下载；
 ##一、Linux 安装；
 ###1、安装mysql，初始化表
 ####1.1.、首先运行以下命令并解压
