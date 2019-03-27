@@ -9,6 +9,8 @@ Docker CE 分为 stable, test, 和 nightly 三个更新频道。每六个月发�
 
 后续做相关补充
 
+---
+
 ```shell
 $ docker run hello-world
 Unable to find image 'hello-world:latest' locally
@@ -39,7 +41,7 @@ For more examples and ideas, visit:
  https://docs.docker.com/get-started/
 ```
 输出以上信息，则说明docker安装成功
----
+
 
 ##镜像加速器
 __国内从 Docker Hub 拉取镜像有时会遇到困难，此时可以配置镜像加速器。Docker 官方和国内很多云服务商都提供了国内加速器服务，例如：__
