@@ -16,7 +16,7 @@
 		* [用 ID、镜像名、摘要删除镜像](#用-id-镜像名-摘要删除镜像)
 		* [Untagged 和 Deleted](#untagged-和-deleted)
 		* [用 docker image ls 命令来配合](#用-docker-image-ls-命令来配合)
-	* [总结](#总结)
+	* [利用 commit 理解镜像构成](#利用-commit-理解镜像构成)
 
 <!-- /code_chunk_output -->
 
@@ -277,9 +277,76 @@ CentOS/RHEL 的用户需要注意的事项
 ~~或许有人注意到了 CentOS 7 中存在被 backports 回来的 overlay 驱动，不过 CentOS 里的这个驱动达不到生产环境使用的稳定程度，所以不推荐使用。~~
 
 
-##总结
-本节主要讲解的是docker镜像相关的命令：
-|命令|参数|说明|
-|---|--|--|
-|docker image pull|详细说明，参见<a href="#docker image pull">获取镜像</a>|获取镜像|
-|docker image ls||列出镜像|
+##利用 commit 理解镜像构成
+注意： `docker commit` 命令除了学习之外，还有一些特殊的应用场合，比如被入侵后保存现场等。但是，不要使用 `docker commit` 定制镜像，定制镜像应该使用 Dockerfile 来完成。如果你想要定制镜像请查看下一小节。
+
+镜像是容器的基础，每次执行 `docker run` 的时候都会指定哪个镜像作为容器运行的基础。在之前的例子中，我们所使用的都是来自于 Docker Hub 的镜像。直接使用这些镜像是可以满足一定的需求，而当这些镜像无法直接满足需求时，我们就需要定制这些镜像。接下来的几节就将讲解如何定制镜像。
+
+回顾一下之前我们学到的知识，镜像是多层存储，每一层是在前一层的基础上进行的修改；而容器同样也是多层存储，是在以镜像为基础层，在其基础上加一层作为容器运行时的存储层。
+
+现在让我们以定制一个 Web 服务器为例子，来讲解镜像是如何构建的。
+```shell
+$ docker run --name webserver -d -p 80:80 nginx
+```
+这条命令会用 `nginx` 镜像启动一个容器，命名为 `webserver，并且映射了` 80 端口，这样我们可以用浏览器去访问这个 `nginx` 服务器。
+
+如果是在 Linux 本机运行的 Docker，或者如果使用的是 Docker for Mac、Docker for Windows，那么可以直接访问：http://localhost；如果使用的是 Docker Toolbox，或者是在虚拟机、云服务器上安装的 Docker，则需要将 `localhost` 换为虚拟机地址或者实际云服务器地址。
+
+直接用浏览器访问的话，我们会看到默认的 Nginx 欢迎页面。
+![](images/images-mac-example-nginx.png)
+现在，假设我们非常不喜欢这个欢迎页面，我们希望改成欢迎 Docker 的文字，我们可以使用 `docker exec` 命令进入容器，修改其内容。
+```shell
+$ docker exec -it webserver bash
+root@371af7ef771b:/# echo '<h1>Hello Docker</h>' > /usr/share/nginx/html/index.html
+root@371af7ef771b:/# exit
+exit
+```
+我们以交互式终端方式进入 webserver 容器，并执行了 bash 命令，也就是获得一个可操作的 Shell。
+
+然后，我们用 \<h1>Hello, Docker!\</h1> 覆盖了 /usr/share/nginx/html/index.html 的内容。
+
+现在我们再刷新浏览器的话，会发现内容被改变了。
+![](images/images-create-nginx-docker.png)
+
+我们修改了容器的文件，也就是改动了容器的存储层。我们可以通过 `docker diff` 命令看到具体的改动。
+```shell
+$ docker diff webserver
+C /run
+A /run/nginx.pid
+C /root
+A /root/.bash_history
+C /usr
+C /usr/share
+C /usr/share/nginx
+C /usr/share/nginx/html
+C /usr/share/nginx/html/index.html
+C /var
+C /var/cache
+C /var/cache/nginx
+A /var/cache/nginx/client_temp
+A /var/cache/nginx/fastcgi_temp
+A /var/cache/nginx/proxy_temp
+A /var/cache/nginx/scgi_temp
+A /var/cache/nginx/uwsgi_temp
+```
+现在我们定制好了变化，我们希望能将其保存下来形成镜像。
+
+要知道，当我们运行一个容器的时候（如果不使用卷的话），我们做的任何文件修改都会被记录于容器存储层里。而 Docker 提供了一个 `docker commit` 命令，可以将容器的存储层保存下来成为镜像。换句话说，就是在原有镜像的基础上，再叠加上容器的存储层，并构成新的镜像。以后我们运行这个新镜像的时候，就会拥有原有容器最后的文件变化。
+`docker commit` 的语法格式为：
+```shell
+docker commit [选项] <容器ID或容器名> [<仓库名>[:<标签>]]
+```
+我们可以用下面的命令将容器保存为镜像：
+```shell
+$ docker commit --author "TonyLee <tonylee890301@gmail.com>" --message "修改了默认网页" webserver nginx:v1-test
+sha256:3176020509430f8d7066c971cc779562e70f32e9c9ef68176794bf73de3b1681
+```
+其中 `--author` 是指定修改的作者，而 `--message` 则是记录本次修改的内容。这点和 git 版本控制相似，不过这里这些信息可以省略留空。
+我们可以在 `docker image ls` 中看到这个新定制的镜像：
+```shell
+$ docker image ls
+REPOSITORY          TAG                 IMAGE ID            CREATED              SIZE
+nginx               v1-test             317602050943        About a minute ago   109MB
+nginx               latest              881bd08c0b08        3 weeks ago          109MB
+```
+我们还可以用 `docker history` 具体查看镜像内的历史记录，如果比较 nginx:latest 的历史记录，我们会发现新增了我们刚刚提交的这一层。
