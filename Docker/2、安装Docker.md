@@ -1,6 +1,18 @@
 
 <!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
 
+<!-- code_chunk_output -->
+
+* [安装Docker](#安装docker)
+	* [镜像加速器](#镜像加速器)
+		* [Ubuntu 14.04、Debian 7 Wheezy](#ubuntu-1404-debian-7-wheezy)
+		* [Ubuntu 16.04+、Debian 8+、 CentoOS 7](#ubuntu-1604-debian-8-centoos-7)
+		* [Window 10](#window-10)
+		* [macOS](#macos)
+		* [检查加速器是否生效](#检查加速器是否生效)
+
+<!-- /code_chunk_output -->
+
 #安装Docker
 Docker 分为 CE 和 EE 两大版本。CE 即社区版（免费，支持周期 7 个月），EE 即企业版，强调安全，付费使用，支持周期 24 个月。
 
