@@ -40,6 +40,8 @@
 		* [VOLUME 定义匿名卷](#volume-定义匿名卷)
 		* [EXPOSE 声明端口](#expose-声明端口)
 		* [WORKDIR 指定工作目录](#workdir-指定工作目录)
+	* [USER 指定当前用户](#user-指定当前用户)
+	* [HEALTHCHECK 健康检查](#healthcheck-健康检查)
 
 <!-- /code_chunk_output -->
 
@@ -849,3 +851,70 @@ RUN echo "hello" > world.txt
 之前说过每一个 `RUN` 都是启动一个容器、执行命令、然后提交存储层文件变更。第一层 `RUN cd /app` 的执行仅仅是当前进程的工作目录变更，一个内存上的变化而已，其结果不会造成任何文件变更。而到第二层的时候，启动的是一个全新的容器，跟第一层的容器更完全没关系，自然不可能继承前一层构建过程中的内存变化。
 
 因此如果需要改变以后各层的工作目录的位置，那么应该使用 `WORKDIR` 指令。
+
+##USER 指定当前用户
+格式：`USER <用户名>[:<用户组>]`
+
+`USER` 指令和 `WORKDIR` 相似，都是改变环境状态并影响以后的层。`WORKDIR` 是改变工作目录，`USER` 则是改变之后层的执行 `RUN`, `CMD` 以及 `ENTRYPOINT` 这类命令的身份。
+
+当然，和 `WORKDIR` 一样，USER 只是帮助你切换到指定用户而已，这个用户必须是事先建立好的，否则无法切换。
+```shell
+RUN groupadd -r redis && useradd -r -g redis redis
+USER redis
+RUN [ "redis-server" ]
+```
+如果以 `root` 执行的脚本，在执行期间希望改变身份，比如希望以某个已经建立好的用户来运行某个服务进程，不要使用 `su` 或者 `sudo`，这些都需要比较麻烦的配置，而且在 `TTY` 缺失的环境下经常出错。建议使用 `gosu`。
+```shell
+# 建立 redis 用户，并使用 gosu 换另一个用户执行命令
+RUN groupadd -r redis && useradd -r -g redis redis
+# 下载 gosu
+RUN wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/1.7/gosu-amd64" \
+    && chmod +x /usr/local/bin/gosu \
+    && gosu nobody true
+# 设置 CMD，并以另外的用户执行
+CMD [ "exec", "gosu", "redis", "redis-server" ]
+```
+
+##HEALTHCHECK 健康检查
+格式：
+* HEALTHCHECK [选项] CMD <命令>：设置检查容器健康状况的命令
+* HEALTHCHECK NONE：如果基础镜像有健康检查指令，使用这行可以屏蔽掉其健康检查指令
+
+`HEALTHCHECK` 指令是告诉 `Docker` 应该如何进行判断容器的状态是否正常，这是 Docker 1.12 引入的新指令。
+
+在没有 `HEALTHCHECK` 指令前，`Docker` 引擎只可以通过容器内主进程是否退出来判断容器是否状态异常。很多情况下这没问题，但是如果程序进入死锁状态，或者死循环状态，应用进程并不退出，但是该容器已经无法提供服务了。在 1.12 以前，`Docker` 不会检测到容器的这种状态，从而不会重新调度，导致可能会有部分容器已经无法提供服务了却还在接受用户请求。
+
+而自 1.12 之后，Docker 提供了 `HEALTHCHECK` 指令，通过该指令指定一行命令，用这行命令来判断容器主进程的服务状态是否还正常，从而比较真实的反应容器实际状态。
+
+当在一个镜像指定了 `HEALTHCHECK` 指令后，用其启动容器，初始状态会为 `starting`，在 `HEALTHCHECK` 指令检查成功后变为 `healthy`，如果连续一定次数失败，则会变为 `unhealthy`。
+
+`HEALTHCHECK` 支持下列选项：
+* `--interval=<间隔>`：两次健康检查的间隔，默认为 30 秒；
+* `--timeout=<时长>`：健康检查命令运行超时时间，如果超过这个时间，本次健康检查就被视为失败，默认 30 秒；
+* `--retries=<次数>`：当连续失败指定次数后，则将容器状态视为 `unhealthy`，默认 3 次。
+
+和 `CMD`, `ENTRYPOINT` 一样，`HEALTHCHECK` 只可以出现一次，如果写了多个，只有最后一个生效。
+
+在 `HEALTHCHECK` [选项] `CMD` 后面的命令，格式和 `ENTRYPOINT` 一样，分为 `shell` 格式，和 `exec` 格式。命令的返回值决定了该次健康检查的成功与否：0：成功；1：失败；2：保留，不要使用这个值。
+
+假设我们有个镜像是个最简单的 Web 服务，我们希望增加健康检查来判断其 Web 服务是否在正常工作，我们可以用 `curl` 来帮助判断，其 `Dockerfile` 的 `HEALTHCHECK` 可以这么写：
+```shell
+FROM nginx
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+HEALTHCHECK --interval=5s --timeout=3s CMD curl -fs http://localhost/ || exit 1
+```
+这里我们设置了每 5 秒检查一次（这里为了试验所以间隔非常短，实际应该相对较长），如果健康检查命令超过 3 秒没响应就视为失败，并且使用 `curl -fs http://localhost/ || exit 1` 作为健康检查命令。
+
+使用 `docker build` 来构建这个镜像：
+```shell
+$ docker build -t myweb:v1 .
+```
+构建好了后，我们启动一个容器：
+```shell
+$ docker run -d --name web -p 80:80 myweb:v1
+```
+![](images/docker-health-build-error.jpg)
+**出错了？！**
+>暂时不知道怎么解决，后续在继续跟进
+
+当运行该镜像后，可以通过 `docker container ls` 看到最初的状态为 `(health: starting)`：
