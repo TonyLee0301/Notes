@@ -32,8 +32,8 @@ HEALTHCHECK --interval=5s --timeout=3s CMD curl -fs http://localhost/ || exit 1
 ```shell
 $ docker build -t myweb:v1 .
 ```
-![](images/docker-health-build-error.jpg)
-[出错原因](problems/apt%20Hash%20sum%20mismatch.md)
+![](resources/docker-health-build-error.jpg)
+[出错原因](../../problems/apt%20Hash%20sum%20mismatch.md)
 该构建出错，解决方法为，将Dockerfile改为：
 ```shell
 FROM nginx
