@@ -43,6 +43,7 @@
 	* [USER 指定当前用户](#user-指定当前用户)
 	* [HEALTHCHECK 健康检查](#healthcheck-健康检查)
 	* [ONBUILD 为他人做嫁衣裳](#onbuild-为他人做嫁衣裳)
+* [参考文档](#参考文档)
 
 <!-- /code_chunk_output -->
 
@@ -984,3 +985,29 @@ COPY ./package.json /app
 RUN [ "npm", "install" ]
 COPY . /app/
 ```
+基础镜像变化后，各个项目都用这个 Dockerfile 重新构建镜像，会继承基础镜像的更新。
+
+那么，问题解决了么？没有。准确说，只解决了一半。如果这个 Dockerfile 里面有些东西需要调整呢？比如 npm install 都需要加一些参数，那怎么办？这一行 RUN 是不可能放入基础镜像的，因为涉及到了当前项目的 ./package.json，难道又要一个个修改么？所以说，这样制作基础镜像，只解决了原来的 Dockerfile 的前4条指令的变化问题，而后面三条指令的变化则完全没办法处理。
+
+ONBUILD 可以解决这个问题。让我们用 ONBUILD 重新写一下基础镜像的 Dockerfile:
+```shell
+FROM node:slim
+RUN mkdir /app
+WORKDIR /app
+ONBUILD COPY ./package.json /app
+ONBUILD RUN [ "npm", "install" ]
+ONBUILD COPY . /app/
+CMD [ "npm", "start" ]
+```
+这次我们回到原始的 `Dockerfile`，但是这次将项目相关的指令加上 `ONBUILD`，这样在构建基础镜像的时候，这三行并不会被执行。然后各个项目的 `Dockerfile` 就变成了简单地：
+```shell
+FROM my-node
+```
+是的，只有这么一行。当在各个项目目录中，用这个只有一行的 `Dockerfile` 构建镜像时，之前基础镜像的那三行 `ONBUILD` 就会开始执行，成功的将当前项目的代码复制进镜像、并且针对本项目执行 `npm install`，生成应用镜像。
+
+#参考文档
+* Dockerfie 官方文档：https://docs.docker.com/engine/reference/builder/
+
+* Dockerfile 最佳实践文档：https://docs.docker.com/develop/develop-images/dockerfile_best-practices/
+
+* Docker 官方镜像 Dockerfile：https://github.com/docker-library/docs
