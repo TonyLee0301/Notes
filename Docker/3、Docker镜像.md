@@ -42,6 +42,7 @@
 		* [WORKDIR 指定工作目录](#workdir-指定工作目录)
 	* [USER 指定当前用户](#user-指定当前用户)
 	* [HEALTHCHECK 健康检查](#healthcheck-健康检查)
+	* [ONBUILD 为他人做嫁衣裳](#onbuild-为他人做嫁衣裳)
 
 <!-- /code_chunk_output -->
 
@@ -837,7 +838,7 @@ docker run -d -v mydata:/data xxxx
 要将 `EXPOSE` 和在运行时使用 `-p <宿主端口>:<容器端口>` 区分开来。`-p`，是映射宿主端口和容器端口，换句话说，就是将容器的对应端口服务公开给外界访问，而 `EXPOSE` 仅仅是声明容器打算使用什么端口而已，并不会自动在宿主进行端口映射。
 
 ### WORKDIR 指定工作目录
-格式为 WORKDIR <工作目录路径>。
+格式为 `WORKDIR <工作目录路径>`。
 使用 WORKDIR 指令可以来指定工作目录（或者称为当前目录），以后各层的当前目录就被改为指定的目录，如该目录不存在，WORKDIR 会帮你建立目录。
 
 之前提到一些初学者常犯的错误是把 Dockerfile 等同于 Shell 脚本来书写，这种错误的理解还可能会导致出现下面这样的错误：
@@ -909,12 +910,77 @@ HEALTHCHECK --interval=5s --timeout=3s CMD curl -fs http://localhost/ || exit 1
 ```shell
 $ docker build -t myweb:v1 .
 ```
+![](images/docker-health-build-error.jpg)
+[出错原因](problems/apt%20Hash%20sum%20mismatch.md)
+该构建出错，解决方法为，将Dockerfile改为：
+```shell
+FROM nginx
+RUN sed -i s@/archive.ubuntu.com/@/mirrors.ustc.edu.cn/@g /etc/apt/sources.list && rm -Rf /var/lib/apt/lists/* && apt-get -y update && apt-get install -y curl
+HEALTHCHECK --interval=5s --timeout=3s CMD curl -fs http://localhost/ ||exit 1
+```
+
 构建好了后，我们启动一个容器：
 ```shell
 $ docker run -d --name web -p 80:80 myweb:v1
 ```
-![](images/docker-health-build-error.jpg)
-**出错了？！**
->暂时不知道怎么解决，后续在继续跟进
-
 当运行该镜像后，可以通过 `docker container ls` 看到最初的状态为 `(health: starting)`：
+```shell
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS                            PORTS                NAMES
+7375bb3a962a        myweb:v1            "nginx -g 'daemon of…"   5 seconds ago       Up 3 seconds (health: starting)   0.0.0.0:80->80/tcp   web
+```
+在等待几秒钟后，再次 `docker container ls`，就会看到健康状态变化为了 `(healthy)`：
+```shell
+CONTAINER ID        IMAGE               COMMAND                  CREATED              STATUS                        PORTS                NAMES
+7375bb3a962a        myweb:v1            "nginx -g 'daemon of…"   About a minute ago   Up About a minute (healthy)   0.0.0.0:80->80/tcp   web
+```
+如果健康检查连续失败超过了重试次数，状态就会变为 (`unhealthy`)。
+
+为了帮助排障，健康检查命令的输出（包括 `stdout` 以及 `stderr`）都会被存储于健康状态里，可以用 `docker inspect` 来查看。
+```shell
+docker inspect --format '{{json .State.Health}}' web | python -m json.tool
+{
+    "FailingStreak": 0,
+    "Log": [
+        {
+            "End": "2019-04-16T10:47:39.4739486Z",
+            "ExitCode": 0,
+            "Output": "<!DOCTYPE html>\n<html>\n<head>\n<title>Welcome to nginx!</title>\n<style>\n    body {\n        width: 35em;\n        margin: 0 auto;\n        font-family: Tahoma, Verdana, Arial, sans-serif;\n    }\n</style>\n</head>\n<body>\n<h1>Welcome to nginx!</h1>\n<p>If you see this page, the nginx web server is successfully installed and\nworking. Further configuration is required.</p>\n\n<p>For online documentation and support please refer to\n<a href=\"http://nginx.org/\">nginx.org</a>.<br/>\nCommercial support is available at\n<a href=\"http://nginx.com/\">nginx.com</a>.</p>\n\n<p><em>Thank you for using nginx.</em></p>\n</body>\n</html>\n",
+            "Start": "2019-04-16T10:47:39.3721604Z"
+        },
+				...
+		]
+```
+
+
+##ONBUILD 为他人做嫁衣裳
+格式：`ONBUILD <其它指令>`。
+`ONBUILD` 是一个特殊的指令，它后面跟的是其它指令，比如 `RUN`, `COPY` 等，而这些指令，在当前镜像构建时并不会被执行。只有当以当前镜像为基础镜像，去构建下一级镜像的时候才会被执行。
+`Dockerfile` 中的其它指令都是为了定制当前镜像而准备的，唯有 `ONBUILD` 是为了帮助别人定制自己而准备的。
+假设我们要制作 `Node.js` 所写的应用的镜像。我们都知道 `Node.js` 使用 `npm` 进行包管理，所有依赖、配置、启动信息等会放到 `package.json` 文件里。在拿到程序代码后，需要先进行 `npm install` 才可以获得所有需要的依赖。然后就可以通过 `npm start` 来启动应用。因此，一般来说会这样写 `Dockerfile`：
+```shell
+FROM node:slim
+RUN mkdir /app
+WORKDIR /app
+COPY ./package.json /app
+RUN [ "npm", "install" ]
+COPY . /app/
+CMD [ "npm", "start" ]
+```
+把这个 `Dockerfile` 放到 `Node.js` 项目的根目录，构建好镜像后，就可以直接拿来启动容器运行。但是如果我们还有第二个 `Node.js` 项目也差不多呢？好吧，那就再把这个 `Dockerfile` 复制到第二个项目里。那如果有第三个项目呢？再复制么？文件的副本越多，版本控制就越困难，让我们继续看这样的场景维护的问题。
+
+如果第一个 Node.js 项目在开发过程中，发现这个 `Dockerfile` 里存在问题，比如敲错字了、或者需要安装额外的包，然后开发人员修复了这个 `Dockerfile`，再次构建，问题解决。第一个项目没问题了，但是第二个项目呢？虽然最初 `Dockerfile` 是复制、粘贴自第一个项目的，但是并不会因为第一个项目修复了他们的 `Dockerfile`，而第二个项目的 `Dockerfile` 就会被自动修复。
+
+那么我们可不可以做一个基础镜像，然后各个项目使用这个基础镜像呢？这样基础镜像更新，各个项目不用同步 `Dockerfile` 的变化，重新构建后就继承了基础镜像的更新？好吧，可以，让我们看看这样的结果。那么上面的这个 `Dockerfile` 就会变为：
+```shell
+FROM node:slim
+RUN mkdir /app
+WORKDIR /app
+CMD [ "npm", "start" ]
+```
+这里我们把项目相关的构建指令拿出来，放到子项目里去。假设这个基础镜像的名字为 `my-node` 的话，各个项目内的自己的 `Dockerfile` 就变为：
+```shell
+FROM my-node
+COPY ./package.json /app
+RUN [ "npm", "install" ]
+COPY . /app/
+```
