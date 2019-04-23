@@ -437,3 +437,26 @@ stdin_open: true
 ```yml
 tty: true
 ```
+
+##读取变量
+`Compose` 模板文件支持动态读取主机的系统环境变量和当前目录下的 `.env` 文件中的变量。
+
+例如，下面的 Compose 文件将从运行它的环境中读取变量 `${MONGO_VERSION}` 的值，并写入执行的指令中。
+```yml
+version: "3"
+services:
+
+db:
+  image: "mongo:${MONGO_VERSION}"
+```
+
+如果执行 `MONGO_VERSION=3.2 docker-compose up` 则会启动一个 `mongo:3.2` 镜像的容器；如果执行 `MONGO_VERSION=2.8 docker-compose up` 则会启动一个 `mongo:2.8` 镜像的容器。
+
+若当前目录存在 `.env` 文件，执行 `docker-compose` 命令时将从该文件中读取变量。
+
+在当前目录新建 .`env` 文件并写入以下内容。
+```shell
+# 支持 # 号注释
+MONGO_VERSION=3.6
+```
+执行 `docker-compose up` 则会启动一个 `mongo:3.6` 镜像的容器。
