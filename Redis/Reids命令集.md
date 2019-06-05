@@ -92,3 +92,14 @@ RPOP | `RPOP key` | 移除并返回 key 对应的 list 的最后一个元素
 LTRIM | `LTRIM key start stop` | 修剪(trim)一个已存在的 list，这样 list 就会只包含指定范围的指定元素。
 
 ##[Set 集合](Data%20Type/Set.md)
+命令 | 格式 | 说明 
+:---: | :-- | :--- 
+SADD | `SADD key member [member ...]` | 添加一个或多个指定的member元素到集合的 key中
+SCARD | `SCARD key` | 返回集合存储的key的基数 (集合元素的数量)
+SDIFF | `SDIFF key [key ...]` | 返回一个集合与给定集合的差集的元素
+SRANDMEMBER | `SRANDMEMBER key [count]` | 从集合中随机获取一个或多个值
+
+##[Sorted Set 集合](Data%20Type/Sorted%20Set.md)
+命令 | 格式 | 说明 
+:---: | :-- | :--- 
+ZADD | `ZADD key [NX|XX] [CH] [INCR] score member [score member ...]` | 将一个或多个值，添加到该hash-key的有序集合里，如果存在则更新

@@ -16,6 +16,8 @@ __添加一个或多个指定的member元素到集合的 key中__
 ```
 #SCARD
 `SCARD key`
+
+__返回集合存储的key的基数 (集合元素的数量)__
 ```shell
 127.0.0.1:6379> SCARD set
 (integer) 2
@@ -33,4 +35,46 @@ __返回一个集合与给定集合的差集的元素.__
 1) "a"
 2) "b"
 3) "c"
+```
+
+#SRANDMEMBER
+`SRANDMEMBER key [count]`
+
+__从集合中随机获取一个或多个值__
+```shell
+127.0.0.1:6379> SRANDMEMBER myset 2
+1) "b"
+2) "c"
+127.0.0.1:6379> SRANDMEMBER myset 2
+1) "a"
+2) "b"
+```
+
+#应用场景
+1. 共同好友、二度好友
+2. 利用唯一性,可以统计访问网站的所有独立 IP
+3. 好友推荐的时候,根据 tag 求交集,大于某个 临界值 就可以推荐
+
+#示例
+以王宝强和马蓉为例，求二度好友，共同好友，推荐系统
+
+```shell
+127.0.0.1:6379> sadd marong_friend 'songdan' 'wangsicong' 'songzhe'
+(integer) 1
+127.0.0.1:6379> SMEMBERS marong_friend
+1) "songzhe"
+2) "wangsicong"
+3) "songdandan"
+127.0.0.1:6379> sadd wangbaoqiang_friend 'dengchao' 'angelababy' 'songzhe'
+(integer) 1
+
+#求共同好友
+127.0.0.1:6379> SINTER marong_friend wangbaoqiang_friend
+1) "songzhe"
+
+#推荐好友系统
+127.0.0.1:6379> SDIFF marong_friend wangbaoqiang_friend
+1) "wangsicong"
+2) "songdandan"
+127.0.0.1:6379>
 ```
