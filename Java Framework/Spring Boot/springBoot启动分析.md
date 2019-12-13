@@ -6,18 +6,24 @@
 <!-- code_chunk_output -->
 
 - [1. SpringBoot 启动流程源码分析](#1-springboot-启动流程源码分析)
-  - [1.1. 、 首先是启动类](#11-首先是启动类)
-    - [1.1.1. 初始化器](#111-初始化器)
-      - [1.1.1.1. springboot ApplicationInitializer的默认实现](#1111-springboot-applicationinitializer的默认实现)
-    - [1.1.2. 监听器](#112-监听器)
+  - [1.1 首先是启动类](#11-首先是启动类)
+    - [1.1.1 初始化器](#111-初始化器)
+      - [springboot ApplicationInitializer的默认实现](#springboot-applicationinitializer的默认实现)
+    - [1.1.2 监听器](#112-监听器)
   - [1.2. springboot 启动](#12-springboot-启动)
-    - [1.2.1. java.awt.headless](#121-javaawtheadless)
-    - [1.2.2. 创建SpringApplicationRunListener](#122-创建springapplicationrunlistener)
+    - [1.2.1 java.awt.headless](#121-javaawtheadless)
+    - [1.2.2 创建 SpringApplicationRunListeners](#122-创建-springapplicationrunlisteners)
+      - [1 SpringApplicationRunListener](#1-springapplicationrunlistener)
+      - [2 EventPublishingRunListener](#2-eventpublishingrunlistener)
+      - [3 SimpleApplicationEventMulticaster](#3-simpleapplicationeventmulticaster)
+      - [3.1 方法 resolveDefaultEventType(event)](#31-方法-resolvedefaulteventtypeevent)
+      - [3.1 方法 getApplicationListeners(event, type)](#31-方法-getapplicationlistenersevent-type)
+    - [1.2.3 starting 事件](#123-starting-事件)
 
 <!-- /code_chunk_output -->
 
 
-## 1.1. 、 首先是启动类
+## 1.1 首先是启动类
  ```java
  @SpringBootApplication
  public class CountingTimesApplication {
@@ -112,65 +118,7 @@
 createSpringFactoriesInstances(type, parameterTypes, classLoader, args, names) 即通过反射实例化。具体的调用在 BeanUtils.instantiateClass 中，有兴趣的同学可以看看。
 相关的初始化器，监听器，都加载成功过了，那么他们到底是用来干嘛的了？ spring 又默认提供了哪些初始化器 和 监听器呢？
 
-### 1.1.1. 初始化器
-下面我们来看看 ApplicationContextInitializer 监听器都可以干什么，在什么时候使用。
- ```java
-  /**
-  * 在 ConfigurableApplicationContext refresh() 调用之前,初始化 Spring ConfigurableApplicationContext 的回调接口
-  */
- public interface ApplicationContextInitializer<C extends ConfigurableApplicationContext> {
-
-	/**
-	 * Initialize the given application context.
-	 * @param applicationContext the application to configure
-	 */
-	//初始化 application context
-	void initialize(C applicationContext);
-
- }
- ```
-可以看出 ApplicationContextInitializer 的说明如其命名一样，用于初始化Spring的应用上下文。
-
-#### 1.1.1.1. springboot ApplicationInitializer的默认实现
-查找META-INFO下的 spring.factories 文件，找到 org.springframework.context.ApplicationContextInitializer 的配置
-在spring-boot中我们先看下常用的个配置
- ```properties
- org.springframework.context.ApplicationContextInitializer=\
- org.springframework.boot.context.ConfigurationWarningsApplicationContextInitializer,\
- org.springframework.boot.context.ContextIdApplicationContextInitializer,\
- org.springframework.boot.context.config.DelegatingApplicationContextInitializer,\
- org.springframework.boot.rsocket.context.RSocketPortInfoApplicationContextInitializer,\
- org.springframework.boot.web.context.ServerPortInfoApplicationContextInitializer
- ```
-在spring-boot-autoconfigure
- ```properties
- org.springframework.context.ApplicationContextInitializer=\
- org.springframework.boot.autoconfigure.SharedMetadataReaderFactoryContextInitializer,\
- org.springframework.boot.autoconfigure.logging.ConditionEvaluationReportLoggingListener
- ```
-像spring-boot-actuator，spring-boot-devtools 等其他相关的初始化器，咱们就先暂时不做介绍。
-
-这么多相关应用上下文初始化器，具体是用来干什么的了？
-|初始化器|介绍|
-|---|---|
-ConfigurationWarningsApplicationContextInitializer|用于报告一些常见的错误配置的错误信息
-ContextIdApplicationContextInitializer|用于创建应用程序上下文 id
-|DelegatingApplicationContextInitializer|用于代表执行环境 context.initializer.classes 下指定的初始化器，其实就是spring boot 提供给使用者的一个可以自己实现 初始化器 的一个方式。
-RSocketPortInfoApplicationContextInitializer| 将 RSocket 响应式编程的端口号 写到 Environment 环境属性当中，这样 local.rsocket.server.port 就可以直接使用 @Value 注入 或通过 Environment 访问
-ServerPortInfoApplicationContextInitializer| 将 webServer 的端口  写到 Environment 环境属性中，这样 local.server.port 就可以直接使用 @Value 注入 或者 通过 Environment 访问，同时可以设置 ServerNameSpace 的端口
-SharedMetadataReaderFactoryContextInitializer|创建一个 spring boot 和 ConfigurationClassPostProcessor 共用的 CachingMetadataReaderFactory 具体实现为 CachingMetadataReaderFactoryPostProcessor
-ConditionEvaluationReportLoggingListener| ConditionEvaluationReport写入日志 
-
-查看着几个常用的 Initializer 比如 SharedMetadataReaderFactoryContextInitializer 中的 initialize 方法
- ```java
- 	@Override
-	public void initialize(ConfigurableApplicationContext applicationContext) {
-		applicationContext.addBeanFactoryPostProcessor(new CachingMetadataReaderFactoryPostProcessor());
-	}
- ```
-我们可以看到 它们的作用更多的是做一些准备工作,例如 ContextIdApplicationContextInitializer 生成 context ServerPortInfoApplicationContextInitializer 将 WebServerInitializedEvent 时间的监听器(也是自己)添加到 应用上下文中 ApplicationListner中， SharedMetadataReaderFactoryContextInitializer 将 CachingMetadataReaderFactoryPostProcessor 添加到 应用上下文中 BeanFactoryPostProcessor 中。
-
-### 1.1.2. 监听器
+### 1.1.2 监听器
 下面我们再来看看 ApplicationListener 监听器又做可以做什么，在什么时候使用。
  ```java
  @FunctionalInterface
@@ -208,7 +156,7 @@ ConditionEvaluationReportLoggingListener| ConditionEvaluationReport写入日志
 定义了一个 ApplicationContextEvent 应用上下文的事件，该 class 是一个抽象类，ApplicationContext的相关的事件的具体实现：
 |实现类|事件|说明|
 |--|--|--|
-|ContextRefreshedEvent|应用程序上线文刷新事件|当 ApplicationContext 初始化或刷新时引发的事件
+|ContextRefreshedEvent|应用程序上下文刷新事件|当 ApplicationContext 初始化或刷新时引发的事件
 |ContextStartedEvent|应用程序上下文启动事件|当 ApplicationContext 启动后引发的事件
 |ContextStoppedEvent|应用程序上下文停止事件|当 ApplicationContext 停止引发的事件
 |ContextClosedEvent|应用程序上线关闭事件|当 ApplicationContext 关闭引发的事件
@@ -317,11 +265,11 @@ ConditionEvaluationReportLoggingListener| ConditionEvaluationReport写入日志
  ```
 接下来，我们一步一步分析run方法中到底做了些什么
 
-### 1.2.1. java.awt.headless
+### 1.2.1 java.awt.headless
 Headless模式是系统的一种配置模式。在系统可能缺少显示设备、键盘或鼠标这些外设的情况下可以使用该模式。
 Headless模式虽然不是我们愿意见到的，但事实上我们却常常需要在该模式下工作，尤其是服务器端程序开发者。因为服务器（如提供Web服务的主机）往往可能缺少前述设备，但又需要使用他们提供的功能，生成相应的数据，以提供给客户端（如浏览器所在的配有相关的显示设备、键盘和鼠标的主机）。
 
-### 1.2.2. 创建 SpringApplicationRunListeners
+### 1.2.2 创建 SpringApplicationRunListeners
 我们具体来看下 SpringApplicationRunListeners 的创建
  ```java
  private SpringApplicationRunListeners getRunListeners(String[] args) {
@@ -333,6 +281,7 @@ Headless模式虽然不是我们愿意见到的，但事实上我们却常常需
 又是 `getSpringFactoriesInstances` 方法，我们知道该方法，就是从 META-INF/spring.factories 中获取对应接口或抽象类的具体实现方法，并实例化；
 需要注意的是，这里比之前创建 SpringListener 和 SpringInitialized 多了几个参数。其实就是参数就是构造方法参数的类型和参数，args是我们在启动调用run时传递进来的参数。
 同时这里的 `this` 也把 `SpringApplication` 作为参数传递给了 正在实例化的 SpringApplicationRunListener。
+#### 1 SpringApplicationRunListener
 我们之前已经讲过ApplicationListener的作用呢，那么`SpringApplicationRunListener`又是干什么用的呢？我们先来看看它的代码:
  ```java
  public interface SpringApplicationRunListener {
@@ -419,11 +368,12 @@ Headless模式虽然不是我们愿意见到的，但事实上我们却常常需
  org.springframework.boot.context.event.EventPublishingRunListener
  ```
 
+#### 2 EventPublishingRunListener
 可以看到配置了 `EventPublishingRunListener` 是 SpringApplicationRunListener 的实现,通过命名，我们大概能明白是推送事件的运行监听器。
  ```java
  public class EventPublishingRunListener implements SpringApplicationRunListener, Ordered {
 
-	//SpringApplication 的上下文
+	//SpringApplication 应用
 	private final SpringApplication application;
 
 	//启动参数
@@ -531,6 +481,110 @@ Headless模式虽然不是我们愿意见到的，但事实上我们却常常需
  }
  ```
  
-在上面的代码中，我们可以看到 一个变量 initialMulticaster 事件广播器，由他添加了对应的 ApplicationListener 的通知都是由 initialMulticaster 完成的。
-同时还有不是ApplicationListener监听的其他事件，也就是说 SpringApplicationRun 是贯穿整个Spring Boot的启动周期的， Spring Boot 每个阶段的变更，都是由它发出对应的通知。
+在上面的代码中，我们可以看到 ApplicationListener 监听的其他事件，也就是说 `SpringApplicationRunListener` 是贯穿整个Spring Boot的启动周期的， Spring Boot 每个阶段的变更，都是由它发出对应的通知，而`SpringApplicationRunListener` 只是提供将 Spring Boot 启动周期的各个阶段，定义出对应的方法，并在内部封装成对应的事件，由一个`SimpleApplicationEventMulticaster`类型的变量 `initialMulticaster` 事件广播器 再发出事件通知。接下来我们看看`SimpleApplicationEventMulticaster`的代码，看一下它是如何将不同的事件，准确的推送给对应的listner的。
 
+#### 3 SimpleApplicationEventMulticaster
+`SimpleApplicationEventMulticaster` 继承了 `AbstractApplicationEventMulticaster` 其作用是广播所有spring事件给注册的 listner ，监听器需要自己忽略不感兴趣的事件。
+我们来看下，他的广播方法。
+ ```java
+ 	public void multicastEvent(ApplicationEvent event) {
+		//广播事件
+		multicastEvent(event, resolveDefaultEventType(event));
+	}
+	public void multicastEvent(final ApplicationEvent event, @Nullable ResolvableType eventType) {
+		//转换类型
+		ResolvableType type = (eventType != null ? eventType : resolveDefaultEventType(event));
+		//获取线程池执行器
+		Executor executor = getTaskExecutor();
+		//获取对应的 listener
+		for (ApplicationListener<?> listener : getApplicationListeners(event, type)) {
+			//若启动了线程池，则由线程池执行调用 listener
+			if (executor != null) {
+				executor.execute(() -> invokeListener(listener, event));
+			}
+			else {
+				//没有线程池，直接调用 listener
+				invokeListener(listener, event);
+			}
+		}
+	}
+ ```
+其中有3个比较重要的方法，
+1. resolveDefaultEventType(event),将 ApplicationEvent 进行包装
+1. getApplicationListeners(event, type) 获取对应的 listener
+1. invokeListener(listener, event)调用listener，完成事件通知
+
+#### 3.1 方法 resolveDefaultEventType(event)
+首先我们看下 resolveDefaultEventType(event) 方法：
+ ```java
+ 	private ResolvableType resolveDefaultEventType(ApplicationEvent event) {
+		return ResolvableType.forInstance(event);
+	}
+ ```
+ ```java
+ 	public static ResolvableType forInstance(Object instance) {
+		Assert.notNull(instance, "Instance must not be null");
+		if (instance instanceof ResolvableTypeProvider) {
+			ResolvableType type = ((ResolvableTypeProvider) instance).getResolvableType();
+			if (type != null) {
+				return type;
+			}
+		}
+		return ResolvableType.forClass(instance.getClass());
+	}
+ ```
+`ResolvableType` 是一个 spring-core 中的一个基础类，主要用来做一些类的包装。有兴趣后续的同学可以去研究研究。
+
+#### 3.1 方法 getApplicationListeners(event, type)
+这个方法应该是事件通知比较重要的一步了，它需要筛选出监听对应的事件的listener，其中加入了很多相关的逻辑判断，还有本地的concurrentHashMap作为缓存，我们主要看的是下面这个方法：
+ ```java
+	protected boolean supportsEvent(
+			ApplicationListener<?> listener, ResolvableType eventType, @Nullable Class<?> sourceType) {
+
+		//将 listener 包装成一个 一般的 监听适配器
+		//这里需要注意的是，先判断 listener 如果实现了 GenericApplicationListener，就自己提供支持事件类型方法
+		//没有，就封装为 GenericApplicationListenerAdapter 由适配器来做适配事件工作
+		GenericApplicationListener smartListener = (listener instanceof GenericApplicationListener ?
+				(GenericApplicationListener) listener : new GenericApplicationListenerAdapter(listener));
+		//由监听适配器，判断是否支持该 事件
+		return (smartListener.supportsEventType(eventType) && smartListener.supportsSourceType(sourceType));
+	}
+ ```
+内部的一些判断逻辑这里就不做详细说明了，有兴趣的同学可以去看看。(主要是通过查找ApplicationListener的参数类型做的判断)
+
+
+### 1.2.3 starting 事件
+接下来就是开始启动了，`listeners.starting()`, 该方法，最终由 `EventPublishingRunListner` 封装对应的事件，并委托给 `SimpleApplicationEventMulticaster` 广播出去。
+ ```java
+ this.initialMulticaster.multicastEvent(new ApplicationStartingEvent(this.application, this.args));
+ ```
+在之间介绍 `ApplicationEvent` 和 `ApplicationListener` 时，我们已经了解到了，监听 `ApplicationStartingEvent` 事件的两个 Listener 为：
+* LoggingApplicationListener
+* LiquibaseServiceLocatorApplicationListener
+我们先来看看 `LoggingApplicationListener`
+ ```java
+ @Override
+	public void onApplicationEvent(ApplicationEvent event) {
+		if (event instanceof ApplicationStartingEvent) {
+			onApplicationStartingEvent((ApplicationStartingEvent) event);
+		}
+		else if (event instanceof ApplicationEnvironmentPreparedEvent) {
+			onApplicationEnvironmentPreparedEvent((ApplicationEnvironmentPreparedEvent) event);
+		}
+		else if (event instanceof ApplicationPreparedEvent) {
+			onApplicationPreparedEvent((ApplicationPreparedEvent) event);
+		}
+		else if (event instanceof ContextClosedEvent
+				&& ((ContextClosedEvent) event).getApplicationContext().getParent() == null) {
+			onContextClosedEvent();
+		}
+		else if (event instanceof ApplicationFailedEvent) {
+			onApplicationFailedEvent();
+		}
+	}
+
+	private void onApplicationStartingEvent(ApplicationStartingEvent event) {
+		this.loggingSystem = LoggingSystem.get(event.getSpringApplication().getClassLoader());
+		this.loggingSystem.beforeInitialize();
+	}
+ ```
