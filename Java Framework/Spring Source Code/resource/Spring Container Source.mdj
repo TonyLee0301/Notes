@@ -413,7 +413,7 @@
 											"font": "Arial;13;0",
 											"left": 93,
 											"top": 189,
-											"width": 124.2490234375,
+											"width": 123.0318603515625,
 											"height": 13,
 											"text": "«interface»"
 										},
@@ -426,7 +426,7 @@
 											"font": "Arial;13;1",
 											"left": 93,
 											"top": 204,
-											"width": 124.2490234375,
+											"width": 123.0318603515625,
 											"height": 13,
 											"text": "BeanDefinitRegistry"
 										},
@@ -461,7 +461,7 @@
 									"font": "Arial;13;0",
 									"left": 88,
 									"top": 184,
-									"width": 134.2490234375,
+									"width": 133.0318603515625,
 									"height": 38,
 									"stereotypeLabel": {
 										"$ref": "AAAAAAFr0IEVUxYSAJs="
@@ -545,7 +545,7 @@
 							"containerChangeable": true,
 							"left": 88,
 							"top": 184,
-							"width": 134.2490234375,
+							"width": 133.0318603515625,
 							"height": 38,
 							"autoResize": true,
 							"showProperty": false,
@@ -12975,9 +12975,9 @@
 												"$ref": "AAAAAAFsmteLRszvSNQ="
 											},
 											"font": "Arial;13;0",
-											"left": 70.97900390625,
+											"left": 75.37593078613281,
 											"top": 10,
-											"width": 74.708984375,
+											"width": 77.66093444824219,
 											"height": 13,
 											"text": "registerBean"
 										},
@@ -12990,7 +12990,7 @@
 											"font": "Arial;13;1",
 											"left": 5,
 											"top": 10,
-											"width": 60.97900390625,
+											"width": 65.37593078613281,
 											"height": 13,
 											"text": "interaction"
 										}
@@ -13703,9 +13703,9 @@
 												"$ref": "AAAAAAFsmuYr7s3irX8="
 											},
 											"font": "Arial;13;0",
-											"left": 51.578125,
+											"left": 52.90898132324219,
 											"top": 213,
-											"width": 60.99169921875,
+											"width": 60.461944580078125,
 											"height": 13,
 											"text": "1,nl.length"
 										},
@@ -13718,7 +13718,7 @@
 											"font": "Arial;13;1",
 											"left": 21,
 											"top": 213,
-											"width": 25.578125,
+											"width": 26.908981323242188,
 											"height": 13,
 											"text": "loop"
 										},
@@ -14028,9 +14028,9 @@
 												"$ref": "AAAAAAFsmuu18s5OIfY="
 											},
 											"font": "Arial;13;0",
-											"left": 93.07177734375,
+											"left": 94.85098266601562,
 											"top": 373,
-											"width": 85.1953125,
+											"width": 88.69792175292969,
 											"height": 13,
 											"text": "bdHolder!=null"
 										},
@@ -14043,7 +14043,7 @@
 											"font": "Arial;13;1",
 											"left": 69,
 											"top": 373,
-											"width": 19.07177734375,
+											"width": 20.850982666015625,
 											"height": 13,
 											"text": "opt"
 										},
@@ -16531,7 +16531,7 @@
 											"font": "Arial;13;0",
 											"left": 2928,
 											"top": 1824,
-											"width": 128.5908203125,
+											"width": 134.84889221191406,
 											"height": 13,
 											"text": "(from PropertySource)"
 										},
@@ -16708,7 +16708,7 @@
 											"font": "Arial;13;0",
 											"left": 2736,
 											"top": 1824,
-											"width": 128.5908203125,
+											"width": 134.84889221191406,
 											"height": 13,
 											"text": "(from PropertySource)"
 										},
@@ -16979,7 +16979,7 @@
 											"font": "Arial;13;0",
 											"left": 2816,
 											"top": 1808,
-											"width": 128.5908203125,
+											"width": 134.84889221191406,
 											"height": 13,
 											"text": "(from PropertySource)"
 										},
@@ -17250,7 +17250,7 @@
 											"font": "Arial;13;0",
 											"left": 2480,
 											"top": 1872,
-											"width": 128.5908203125,
+											"width": 134.84889221191406,
 											"height": 13,
 											"text": "(from PropertySource)"
 										},
@@ -17521,7 +17521,7 @@
 											"font": "Arial;13;0",
 											"left": 2720,
 											"top": 1792,
-											"width": 128.5908203125,
+											"width": 134.84889221191406,
 											"height": 13,
 											"text": "(from PropertySource)"
 										},
@@ -17792,7 +17792,7 @@
 											"font": "Arial;13;0",
 											"left": 2144,
 											"top": 1840,
-											"width": 128.5908203125,
+											"width": 134.84889221191406,
 											"height": 13,
 											"text": "(from PropertySource)"
 										},
@@ -18063,7 +18063,7 @@
 											"font": "Arial;13;0",
 											"left": 2384,
 											"top": 1616,
-											"width": 128.5908203125,
+											"width": 134.84889221191406,
 											"height": 13,
 											"text": "(from PropertySource)"
 										},
@@ -18334,7 +18334,7 @@
 											"font": "Arial;13;0",
 											"left": 2160,
 											"top": 1808,
-											"width": 128.5908203125,
+											"width": 134.84889221191406,
 											"height": 13,
 											"text": "(from PropertySource)"
 										},
@@ -18605,7 +18605,7 @@
 											"font": "Arial;13;0",
 											"left": 1943.0029296875,
 											"top": 1792,
-											"width": 128.5908203125,
+											"width": 134.84889221191406,
 											"height": 13,
 											"text": "(from PropertySource)"
 										},
@@ -18876,7 +18876,7 @@
 											"font": "Arial;13;0",
 											"left": 2001.4794921875,
 											"top": 1792,
-											"width": 128.5908203125,
+											"width": 134.84889221191406,
 											"height": 13,
 											"text": "(from PropertySource)"
 										},
@@ -19147,7 +19147,7 @@
 											"font": "Arial;13;0",
 											"left": 2176,
 											"top": 1792,
-											"width": 128.5908203125,
+											"width": 134.84889221191406,
 											"height": 13,
 											"text": "(from PropertySource)"
 										},
@@ -19393,7 +19393,7 @@
 											"font": "Arial;13;0",
 											"left": -4544,
 											"top": 912,
-											"width": 64.32080078125,
+											"width": 68.30192565917969,
 											"height": 13,
 											"text": "«interface»"
 										},
@@ -19420,7 +19420,7 @@
 											"font": "Arial;13;0",
 											"left": -4544,
 											"top": 912,
-											"width": 128.5908203125,
+											"width": 134.84889221191406,
 											"height": 13,
 											"text": "(from PropertySource)"
 										},
@@ -19577,7 +19577,7 @@
 											"font": "Arial;13;0",
 											"left": -4336,
 											"top": 848,
-											"width": 64.32080078125,
+											"width": 68.30192565917969,
 											"height": 13,
 											"text": "«interface»"
 										},
@@ -19604,7 +19604,7 @@
 											"font": "Arial;13;0",
 											"left": -4336,
 											"top": 848,
-											"width": 128.5908203125,
+											"width": 134.84889221191406,
 											"height": 13,
 											"text": "(from PropertySource)"
 										},
@@ -19855,7 +19855,7 @@
 											"font": "Arial;13;0",
 											"left": -4652.84326171875,
 											"top": 842,
-											"width": 64.32080078125,
+											"width": 68.30192565917969,
 											"height": 13,
 											"text": "«interface»"
 										},
@@ -19882,7 +19882,7 @@
 											"font": "Arial;13;0",
 											"left": -4652.84326171875,
 											"top": 842,
-											"width": 128.5908203125,
+											"width": 134.84889221191406,
 											"height": 13,
 											"text": "(from PropertySource)"
 										},
@@ -20133,7 +20133,7 @@
 											"font": "Arial;13;0",
 											"left": -4640,
 											"top": 896,
-											"width": 64.32080078125,
+											"width": 68.30192565917969,
 											"height": 13,
 											"text": "«interface»"
 										},
@@ -20160,7 +20160,7 @@
 											"font": "Arial;13;0",
 											"left": -4640,
 											"top": 896,
-											"width": 128.5908203125,
+											"width": 134.84889221191406,
 											"height": 13,
 											"text": "(from PropertySource)"
 										},
@@ -20530,7 +20530,7 @@
 											"font": "Arial;13;0",
 											"left": -4588.54296875,
 											"top": 1136,
-											"width": 128.5908203125,
+											"width": 134.84889221191406,
 											"height": 13,
 											"text": "(from PropertySource)"
 										},
@@ -20801,7 +20801,7 @@
 											"font": "Arial;13;0",
 											"left": -3764.4921875,
 											"top": 508,
-											"width": 128.5908203125,
+											"width": 134.84889221191406,
 											"height": 13,
 											"text": "(from PropertySource)"
 										},
@@ -21072,7 +21072,7 @@
 											"font": "Arial;13;0",
 											"left": -4512,
 											"top": 848,
-											"width": 128.5908203125,
+											"width": 134.84889221191406,
 											"height": 13,
 											"text": "(from PropertySource)"
 										},
@@ -21343,7 +21343,7 @@
 											"font": "Arial;13;0",
 											"left": -5420.521484375,
 											"top": 416,
-											"width": 128.5908203125,
+											"width": 134.84889221191406,
 											"height": 13,
 											"text": "(from PropertySource)"
 										},
@@ -21589,7 +21589,7 @@
 											"font": "Arial;13;0",
 											"left": -7600,
 											"top": 1632,
-											"width": 64.32080078125,
+											"width": 68.30192565917969,
 											"height": 13,
 											"text": "«interface»"
 										},
@@ -21616,7 +21616,7 @@
 											"font": "Arial;13;0",
 											"left": -7600,
 											"top": 1632,
-											"width": 128.5908203125,
+											"width": 134.84889221191406,
 											"height": 13,
 											"text": "(from PropertySource)"
 										},
@@ -21772,7 +21772,7 @@
 											"font": "Arial;13;0",
 											"left": -7652.95751953125,
 											"top": 1432,
-											"width": 64.32080078125,
+											"width": 68.30192565917969,
 											"height": 13,
 											"text": "«interface»"
 										},
@@ -21799,7 +21799,7 @@
 											"font": "Arial;13;0",
 											"left": -7652.95751953125,
 											"top": 1432,
-											"width": 128.5908203125,
+											"width": 134.84889221191406,
 											"height": 13,
 											"text": "(from PropertySource)"
 										},
@@ -22074,7 +22074,7 @@
 											"font": "Arial;13;0",
 											"left": -7592.50390625,
 											"top": 1496,
-											"width": 128.5908203125,
+											"width": 134.84889221191406,
 											"height": 13,
 											"text": "(from PropertySource)"
 										},

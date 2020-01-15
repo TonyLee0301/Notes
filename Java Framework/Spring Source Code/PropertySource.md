@@ -1,9 +1,32 @@
-# PropertySource
+
+<!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
+
+<!-- code_chunk_output -->
+
+- [Spring 的配置资源](#spring-的配置资源)
+  - [1. PropertySource](#1-propertysource)
+    - [EnumerablePropertySource](#enumerablepropertysource)
+  - [2. PropertySources](#2-propertysources)
+    - [MutablePropertySources](#mutablepropertysources)
+  - [3. PropertyResolver](#3-propertyresolver)
+    - [ConfigurablePropertyResolver](#configurablepropertyresolver)
+
+<!-- /code_chunk_output -->
+
+# Spring 的配置资源
 &emsp;&emsp;先看下 spring `PropertySource` 相关的类图
 ![](resource/images/PropertySource.png)
-&emsp;&emsp;可以看到主要分为三部分：
+&emsp;&emsp;从类图上，我们可以看到三个根接口或抽象类：
+
 1. **PropertySource**
 &emsp;&emsp;`PropertySource` 抽象类，定了一个 name/value 的配置类，但是一般不单独使用，而是通过 `PropertySources` 和 PropertyResolver 来处理。我们来看下它的源码：
+1. **PropertySources**
+&emsp;&emsp;`PropertySources` 是一个接口，包含一个或多个`PropertySource`的持有。其实就是一个 `PropertySource` 的集合接口。
+1. **PropertyResolver**
+&emsp;&emsp;`PropertyResolver` 也是一个接口，主要是针对任何潜来源，解析 properties 属性。
+
+## 1. PropertySource
+&emsp;&emsp;我们先看看 `PropertySource` 的定义：
  ```java
  public abstract class PropertySource<T> {
 
@@ -201,18 +224,155 @@
 
  }
  ```
-这里我们主要讲一下 containsProperty 和 named 方法
-`named`方法为了创建一个ComparisonPropertySource，与eqauls配合，判断 PropertySource 集合，否存在 name 的的配置 PropertySource
-通过注释我们我们可以看到相关的说明。通过`equals`方法的重写，判断两个 PropertySource 是否相同。
-`containsProperty`方法是直接调用 `getProperty` 也就是说，具体的实现是由子类来处理的。
+&emsp;&emsp;这里我们主要讲一下 `containsProperty` 和 `named` 方法
+&emsp;&emsp;`named`方法为了创建一个 `ComparisonPropertySource`，与`eqauls`配合，判断 `PropertySource` 集合，否存在 `name` 的的配置 `PropertySource`,通过注释我们我们可以看到相关的说明。通过`equals`方法的重写，判断两个 `PropertySource` 是否相同。
+&emsp;&emsp;`containsProperty`方法是直接调用 `getProperty` 也就是说，具体的实现是由子类来处理的。
+&emsp;&emsp;接下来我们在看看他的实现类。
 
-1. **PropertySources**
-&emsp;&emsp;`PropertySources` 是一个接口，包含一个或多个`PropertySource`的持有。
-1. **PropertyResolver**
-&emsp;&emsp;`PropertyResolver` 也是一个接口，主要是针对任何潜来源，解析 properties 属性。
+### EnumerablePropertySource
+&emsp;&emsp;看过类图我们应该都已经知道了 `EnumerablePropertySource` 实现了`PropertySource`，其他所有的相关子类，都是继承至它。
+&emsp;&emsp;从命名 `Enumerable` 可以看出，该 `PropertySource` 是一个可列举 `PropertySource`;我们来看看它的源码：
+ ```java
+ public abstract class EnumerablePropertySource<T> extends PropertySource<T> {
 
-## 1. PropertySource
-&emsp;&emsp;可以看到 `PropertySource` 的类图关系，定义了一个 `EnumerablePropertySource` 抽象类，其他子类都是继承至它
-### 1.1 EnumerablePropertySource
-&emsp;&emsp;从命名 `Enumerable` 可以看出，该 `PropertySource` 是一个可列举 `PropertySource`;我们看下它的相关介绍
+	public EnumerablePropertySource(String name, T source) {
+		super(name, source);
+	}
 
+	protected EnumerablePropertySource(String name) {
+		super(name);
+	}
+
+
+	/**
+	 * Return whether this {@code PropertySource} contains a property with the given name.
+	 * <p>This implementation checks for the presence of the given name within the
+	 * {@link #getPropertyNames()} array.
+	 * @param name the name of the property to find
+	 */
+	@Override
+	public boolean containsProperty(String name) {
+		return ObjectUtils.containsElement(getPropertyNames(), name);
+	}
+
+	/**
+	 * Return the names of all properties contained by the
+	 * {@linkplain #getSource() source} object (never {@code null}).
+	 */
+	public abstract String[] getPropertyNames();
+
+ }
+ ```
+&emsp;&emsp;可以看到只多增加了一个 getPropertyNames 的方法，实现了 containsProperty 方法。主要是为了询问基础源对象，以枚举所有可能的 name/value。
+下面我们就来看看下面的主要几个子类实现：
+1. **MapPropertySource**
+&emsp;&emsp;通过这个定义，就能明白，是一个以`map`为 `PropertySource` 的`source`的 name/value 对象。其源码很简单就不解释了。
+1. **CommandLinePropertySource**
+&emsp;&emsp;命令行的 propertySource 主要用于 一些 JOpt 和 spring 启动参数的命令行的配置。
+
+## 2. PropertySources
+&emsp;&emsp;先看下 `PropertySources` 的定义
+ ```java
+public interface PropertySources extends Iterable<PropertySource<?>> 
+ ```
+一个以 `PropertySource` 为对象的可迭代的对象，也就是可以用 获取`Iterator` 迭代器，用于迭代或通过foreach遍历所有的 `PropertySource`；
+主要看两个方法
+ ```java
+ //判断name的PropertySource是否存在
+ boolean contains(String name);
+ //根据name获取PropertySource
+ PropertySource<?> get(String name);
+ ```
+### MutablePropertySources
+ ```java
+ public class MutablePropertySources implements PropertySources {
+	private final List<PropertySource<?>> propertySourceList = new CopyOnWriteArrayList<>();
+	...
+	@Override
+	public boolean contains(String name) {
+		return this.propertySourceList.contains(PropertySource.named(name));
+	}
+
+	@Override
+	@Nullable
+	public PropertySource<?> get(String name) {
+		int index = this.propertySourceList.indexOf(PropertySource.named(name));
+		return (index != -1 ? this.propertySourceList.get(index) : null);
+	}
+	...
+ }
+ ```
+&emsp;&emsp;可以看到 `MutablePropertySources` 中其实就使用到 `CopyOnWriteArrayList` 来管理多个`PropertySource`;
+&emsp;&emsp;这里的`contains`和`get`方法，就可以看到 `PropertySource` 中的`named`的用途了。其中的判断，都是通过获取一个`PropertySource`然后来对比，是否存在或去获取。
+
+## 3. PropertyResolver
+&emsp;&emsp; `PropertyResolver` 是一个用于解析所有基础源资源的属性的接口；
+&emsp;&emsp;我们前面讲到的 PropertySource、PropertySources 都是属于资源。PropertySource 中`source`的属性才是 PropertyResolver 解析的对象。
+其中的很多方法定义:
+ ```java
+ public interface PropertyResolver {
+
+	//该key的property是否存在
+	boolean containsProperty(String key);
+
+	//获取该key 的property 
+	@Nullable
+	String getProperty(String key);
+
+	//获取该 key 的property，默认值
+	String getProperty(String key, String defaultValue);
+
+	//获取该 key 的 property 返回指定类型
+	@Nullable
+	<T> T getProperty(String key, Class<T> targetType);
+
+	//同上，加个默认值
+	<T> T getProperty(String key, Class<T> targetType, T defaultValue);
+
+	//获取必需的property
+	String getRequiredProperty(String key) throws IllegalStateException;
+
+	//获取必需的property,返回指定类型
+	<T> T getRequiredProperty(String key, Class<T> targetType) throws IllegalStateException;
+
+	//通过 getProperty 替换占位符
+	String resolvePlaceholders(String text);
+
+	//同上，必需限制
+	String resolveRequiredPlaceholders(String text) throws IllegalArgumentException;
+
+ }
+ ```
+可以看到 `PropertyResolver` 就是提供解析配置的相关方法。
+
+### ConfigurablePropertyResolver
+&emsp;&emsp;`ConfigurablePropertyResolver`也是个接口，通过名字我们大概可以看出，可配置的解析接口。我们来看下相关的方法定义
+ ```java
+ public interface ConfigurablePropertyResolver extends PropertyResolver {
+
+	//获取 ConfigurableConversionService
+	ConfigurableConversionService getConversionService();
+
+	//设置 ConfigurableConversionService
+	void setConversionService(ConfigurableConversionService conversionService);
+
+	//设置占位符前缀
+	void setPlaceholderPrefix(String placeholderPrefix);
+
+	//设置占位符后缀
+	void setPlaceholderSuffix(String placeholderSuffix);
+
+	//设置占位符和默认值之间的分隔符
+	void setValueSeparator(@Nullable String valueSeparator);
+
+    //设置配置中的占位符，如果不能解析，是否抛出异常
+	void setIgnoreUnresolvableNestedPlaceholders(boolean ignoreUnresolvableNestedPlaceholders);
+
+	//设置必需配置名
+	void setRequiredProperties(String... requiredProperties);
+
+	//根据 #setRequiredProperties 验证
+	void validateRequiredProperties() throws MissingRequiredPropertiesException;
+
+ }
+ ```
