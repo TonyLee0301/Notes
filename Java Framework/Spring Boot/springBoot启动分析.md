@@ -17,6 +17,12 @@
     - [1.3.2 创建 SpringApplicationRunListeners](#132-创建-springapplicationrunlisteners)
     - [1.3.3 创建默认的参数](#133-创建默认的参数)
     - [1.3.4 准备环境](#134-准备环境)
+      - [1. 创建或获取环境：](#1-创建或获取环境)
+      - [2. 配置环境](#2-配置环境)
+      - [3. 将 ConfigurationPropertySources 支持附加到指定的环境上](#3-将-configurationpropertysources-支持附加到指定的环境上)
+      - [4. 发布环境准备由相关监听器处理相关逻辑，主要用于首次环境准备或检查](#4-发布环境准备由相关监听器处理相关逻辑主要用于首次环境准备或检查)
+      - [5. 绑定环境到 springApplication](#5-绑定环境到-springapplication)
+      - [6. 将 ConfigurationPropertySources 配置附加到指定的环境上](#6-将-configurationpropertysources-配置附加到指定的环境上)
 
 <!-- /code_chunk_output -->
 
@@ -423,8 +429,11 @@ ApplicationArguments applicationArguments = new DefaultApplicationArguments(args
 		return environment;
 	}
  ```
+讲到这里的时候，我们可能需要先准备了解一下，spring 和 spring boot 相关配置资源类。
+
+
 可以看到准备环境主要有一下几步：
-1. 创建或获取环境：
+#### 1. 创建或获取环境：
  ```java
  	/**
 	 * 根据不同的应用创建不同的环境
@@ -444,21 +453,69 @@ ApplicationArguments applicationArguments = new DefaultApplicationArguments(args
 		}
 	}
  ```
-2. 配置环境
+#### 2. 配置环境
  ```java
- protected void configureEnvironment(ConfigurableEnvironment environment, String[] args) {
+	/**
+	 * Template method delegating to
+	 * {@link #configurePropertySources(ConfigurableEnvironment, String[])} and
+	 * {@link #configureProfiles(ConfigurableEnvironment, String[])} in that order.
+	 * Override this method for complete control over Environment customization, or one of
+	 * the above for fine-grained control over property sources or profiles, respectively.
+	 * @param environment this application's environment
+	 * @param args arguments passed to the {@code run} method
+	 * @see #configureProfiles(ConfigurableEnvironment, String[])
+	 * @see #configurePropertySources(ConfigurableEnvironment, String[])
+	 *
+	 * 模板方法，通过顺序 委托给 configurePropertySources configureProfiles
+	 */
+	protected void configureEnvironment(ConfigurableEnvironment environment, String[] args) {
+		//由于当前环境变量才刚创建，因此主要处理的相关环境，均是通过启动参数 args 传递过来的。
 		if (this.addConversionService) {
+			//获取 conversionService 并将 conversionService 设置到 environment 中
+			//conversionService 设置相关的转换，格式化类，到环境中
 			ConversionService conversionService = ApplicationConversionService.getSharedInstance();
 			environment.setConversionService((ConfigurableConversionService) conversionService);
 		}
+		//添加/删除/修改propertySource,主要是将默认的 defaultProperties 和 启动参数 args 设置到 environment 当中
 		configurePropertySources(environment, args);
+		//配置 profile
 		configureProfiles(environment, args);
 	}
  ```
-3. 将 ConfigurationPropertySources 配置附加到指定的环境上
-4. 发布环境准备由相关监听器处理相关逻辑，主要用于首次环境准备或检查
-5. 绑定环境到 springApplication
-6. 将 ConfigurationPropertySources 配置附加到指定的环境上
+ 环境的配置，其实主要做了2个事件，1、首先是配置和创建类型环境变量的一些类型转换类；2、根据启动参数，设置对应的环境配置和profile配置
+
+#### 3. 将 ConfigurationPropertySources 支持附加到指定的环境上
+其实这里做的事，将原本 environment 中的 MutablePropertySources 转换成 ConfigurationPropertySourcesPropertySource。
+具体什么作用，暂时还未详细解读。
+ ```java
+ public static void attach(Environment environment) {
+		Assert.isInstanceOf(ConfigurableEnvironment.class, environment);
+		MutablePropertySources sources = ((ConfigurableEnvironment) environment).getPropertySources();
+		PropertySource<?> attached = sources.get(ATTACHED_PROPERTY_SOURCE_NAME);
+		if (attached != null && attached.getSource() != sources) {
+			sources.remove(ATTACHED_PROPERTY_SOURCE_NAME);
+			attached = null;
+		}
+		if (attached == null) {
+			sources.addFirst(new ConfigurationPropertySourcesPropertySource(ATTACHED_PROPERTY_SOURCE_NAME,
+					new SpringConfigurationPropertySources(sources)));
+		}
+	}
+ ```
+#### 4. 发布环境准备由相关监听器处理相关逻辑，主要用于首次环境准备或检查
+通过 SpringRunListener 和 EventPublishingRunListener 广播发送 ApplicationEnvironmentPreparedEvent 事件。
+主要几个事件监听器为：
+* FileEncodingApplicationListener
+FileEncodingApplicationListener 作用主要是检查文件编码  
+&emsp;&emsp;判断 spring.mandatory-file-encoding 如果存在 和 jvm 环境的 file.encoding 是否相同，不同则抛出异常
+AnsiOutputApplicationListener
+&emsp;&emsp;设置 AnsiOutput 的相关配置
+* ConfigFileApplicationListener
+ClasspathLoggingApplicationListener
+LoggingApplicationListener
+
+#### 5. 绑定环境到 springApplication
+#### 6. 将 ConfigurationPropertySources 配置附加到指定的环境上
 
 
 

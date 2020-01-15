@@ -101,11 +101,3 @@ public abstract class ApplicationEvent extends EventObject {
 }
  ```
 可以看到该接口定义了两个方法，判断该 `listener` 支持的 事件类型 和 资源类型。
-
-### LoggingApplicationListener
-`LoggingApplicationListener` 该 `listener` 是一个配置
-我们先来看看其定义，实现了 `GenericApplicationListener` 
- ```java
- public class LoggingApplicationListener implements GenericApplicationListener
- ```
-
