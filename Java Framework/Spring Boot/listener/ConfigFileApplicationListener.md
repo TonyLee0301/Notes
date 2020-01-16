@@ -181,6 +181,6 @@ addPropertySources 方法主要的处理逻辑都到了 Loader 的 load 方法�
  ```
 &emsp;&emsp;回头我们在看看 load 方法中实现的 consumer
  ```java
-	
+	∂
  ```
 

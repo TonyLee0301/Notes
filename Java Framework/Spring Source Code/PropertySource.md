@@ -343,7 +343,7 @@ public interface PropertySources extends Iterable<PropertySource<?>>
 
  }
  ```
-可以看到 `PropertyResolver` 就是提供解析配置的相关方法。
+可以看到 `PropertyResolver` 就是提供获取配置的一些相关基础功能，比如获取、判断、替换占位符。
 
 ### ConfigurablePropertyResolver
 &emsp;&emsp;`ConfigurablePropertyResolver`也是个接口，通过名字我们大概可以看出，可配置的解析接口。我们来看下相关的方法定义
@@ -376,3 +376,10 @@ public interface PropertySources extends Iterable<PropertySource<?>>
 
  }
  ```
+可以看出 `ConfigurablePropertyResolver` 提供了额外的一些扩展功能，例如设置设置占位符的前后缀、设置占位符解析的情况，设置必需的配置。另外我们需要讲一下 `ConfigurableConversionService`
+ ```java
+ public interface ConfigurableConversionService extends ConversionService, ConverterRegistry {
+ }
+ ```
+继承于`ConversionService`、`ConverterRegistry` 主要做相关的类型转换。这里就不详细介绍相关的设计和逻辑了。
+
