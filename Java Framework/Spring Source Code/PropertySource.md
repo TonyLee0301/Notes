@@ -10,6 +10,9 @@
     - [MutablePropertySources](#mutablepropertysources)
   - [3. PropertyResolver](#3-propertyresolver)
     - [ConfigurablePropertyResolver](#configurablepropertyresolver)
+    - [PropertySourcesPropertyResolver](#propertysourcespropertyresolver)
+    - [PropertyPlaceholderHelper](#propertyplaceholderhelper)
+    - [ConversionService](#conversionservice)
 
 <!-- /code_chunk_output -->
 
@@ -338,7 +341,7 @@ public interface PropertySources extends Iterable<PropertySource<?>>
 	//通过 getProperty 替换占位符
 	String resolvePlaceholders(String text);
 
-	//同上，必需限制
+	//同上，并且如果未能解析占位符且没有默认值，则抛出 IllegalArgumentException 异常
 	String resolveRequiredPlaceholders(String text) throws IllegalArgumentException;
 
  }
@@ -382,4 +385,233 @@ public interface PropertySources extends Iterable<PropertySource<?>>
  }
  ```
 继承于`ConversionService`、`ConverterRegistry` 主要做相关的类型转换。这里就不详细介绍相关的设计和逻辑了。
+
+### PropertySourcesPropertyResolver
+&emsp;&emsp;`PropertySourcesPropertyResolver`继承至`AbstractPropertyResolver`,`AbstractPropertyResolver`是一个抽象类实现ConfigurablePropertyResolver的相关接口。并且实现了很多基础功能；。
+&emsp;&emsp;下面我们主要看一下`AbstractPropertyResolver`几个主要的方法：
+>AbstractPropertyResolver
+ ```java
+ 	/**
+	 * 获取指定一个property
+	 * @param key the property name to resolve
+	 * @return
+	 */
+	@Override
+	@Nullable
+	public String getProperty(String key) {
+		//<T> T getProperty(String key, Class<T> targetType);这个方法由子类自行实现
+		return getProperty(key, String.class);
+	}
+	/**
+	 * 解析占位符的方法
+	 * @param text the String to resolve
+	 * @return
+	 */
+	@Override
+	public String resolvePlaceholders(String text) {
+		if (this.nonStrictHelper == null) {
+			this.nonStrictHelper = createPlaceholderHelper(true);
+		}
+		return doResolvePlaceholders(text, this.nonStrictHelper);
+	}
+
+	@Override
+	public String resolveRequiredPlaceholders(String text) throws IllegalArgumentException {
+		if (this.strictHelper == null) {
+			this.strictHelper = createPlaceholderHelper(false);
+		}
+		return doResolvePlaceholders(text, this.strictHelper);
+	}
+	/**
+	 * 真正解析占位符的方法，是委托给helper处理的
+	 * @param text
+	 * @param helper
+	 * @return
+	 */
+	private String doResolvePlaceholders(String text, PropertyPlaceholderHelper helper) {
+		return helper.replacePlaceholders(text, this::getPropertyAsRawString);
+	}
+ ```
+ 接下来我们再来看看`PropertySourcesPropertyResolver`
+  ```java
+	@Nullable
+	protected <T> T getProperty(String key, Class<T> targetValueType, boolean resolveNestedPlaceholders) {
+		//判断propertySources存在不
+		if (this.propertySources != null) {
+			//循环 propertySources
+			for (PropertySource<?> propertySource : this.propertySources) {
+				if (logger.isTraceEnabled()) {
+					logger.trace("Searching for key '" + key + "' in PropertySource '" +
+							propertySource.getName() + "'");
+				}
+				//通过 propertySource 查找key，由于每个propertySource自己都实现了自己的getProperty方法
+				Object value = propertySource.getProperty(key);
+				if (value != null) {
+					//一般情况下都是 resolveNestedPlaceholders = true 并且value 是 String 的情况下解析占位符
+					if (resolveNestedPlaceholders && value instanceof String) {
+						value = resolveNestedPlaceholders((String) value);
+					}
+					//日志记录
+					logKeyFound(key, propertySource, value);
+					//有需要的话转换为需要的数据类型
+					return convertValueIfNecessary(value, targetValueType);
+				}
+			}
+		}
+		if (logger.isTraceEnabled()) {
+			logger.trace("Could not find key '" + key + "' in any property source");
+		}
+		return null;
+	}
+  ```
+上面的代码其实挺简单，就是轮训 `propertySources` 获取 `propertSource` 中的值,并解析占位符，有需要还可以做类型的转换。这里看到我们在做占位符解析和类型转换时，其实都是委托给其他类完成。接下来我们就来看看`PropertyPlaceholderHelper` 和 实现接口`ConversionService`的类。
+
+### PropertyPlaceholderHelper
+我们先来看看它的构造方法
+ ```java
+ public PropertyPlaceholderHelper(String placeholderPrefix, String placeholderSuffix) {
+		this(placeholderPrefix, placeholderSuffix, null, true);
+	}
+
+ public PropertyPlaceholderHelper(String placeholderPrefix, String placeholderSuffix,
+			@Nullable String valueSeparator, boolean ignoreUnresolvablePlaceholders) {
+
+		Assert.notNull(placeholderPrefix, "'placeholderPrefix' must not be null");
+		Assert.notNull(placeholderSuffix, "'placeholderSuffix' must not be null");
+		//设置占位符前缀、后缀
+		this.placeholderPrefix = placeholderPrefix;
+		this.placeholderSuffix = placeholderSuffix;
+		//获取一个简单的前缀
+		String simplePrefixForSuffix = wellKnownSimplePrefixes.get(this.placeholderSuffix);
+		if (simplePrefixForSuffix != null && this.placeholderPrefix.endsWith(simplePrefixForSuffix)) {
+			this.simplePrefix = simplePrefixForSuffix;
+		}
+		else {
+			this.simplePrefix = this.placeholderPrefix;
+		}
+		//设置值分隔符
+		this.valueSeparator = valueSeparator;
+		//是否忽略解析占位符失败
+		this.ignoreUnresolvablePlaceholders = ignoreUnresolvablePlaceholders;
+	}
+ ```
+接下来，我们就需要看看，如何将占位符替换成真正的 property 
+ ```java
+	public String replacePlaceholders(String value, PlaceholderResolver placeholderResolver) {
+		Assert.notNull(value, "'value' must not be null");
+		return parseStringValue(value, placeholderResolver, null);
+	}
+
+	protected String parseStringValue(
+			String value, PlaceholderResolver placeholderResolver, @Nullable Set<String> visitedPlaceholders) {
+		//查看当前值，是否有占位符前缀，有代表为站位符，无是真正的配置数据
+		int startIndex = value.indexOf(this.placeholderPrefix);
+		if (startIndex == -1) {
+			return value;
+		}
+
+		StringBuilder result = new StringBuilder(value);
+		while (startIndex != -1) {
+			//查找占位符后缀的下标，这里会默认找到对应的一个例如 ${${xx.xx}},那么首先获取到的应该是最后一个'}'下标
+			int endIndex = findPlaceholderEndIndex(result, startIndex);
+			if (endIndex != -1) {
+				//获取到占位符
+				String placeholder = result.substring(startIndex + this.placeholderPrefix.length(), endIndex);
+				//赋值给 originalPlaceholder
+				String originalPlaceholder = placeholder;
+				//创建一个第一次集合，放置访问过的站位符，避免循环依赖
+				if (visitedPlaceholders == null) {
+					visitedPlaceholders = new HashSet<>(4);
+				}
+				//如果添加占位符不成功，说明已经本次解析使用过该占位符，同一个占位符解析中，不同相同名字的占位符，这里是避免循环依赖的情况，例如 : a = ${b} b = ${a}
+				if (!visitedPlaceholders.add(originalPlaceholder)) {
+					throw new IllegalArgumentException(
+							"Circular placeholder reference '" + originalPlaceholder + "' in property definitions");
+				}
+				// Recursive invocation, parsing placeholders contained in the placeholder key.
+				//根据获取到的占位符进行递归解析 类似于 a = ${${c}} 这种情况
+				placeholder = parseStringValue(placeholder, placeholderResolver, visitedPlaceholders);
+				// Now obtain the value for the fully resolved key...
+				//传递一个 placeholderResolver 获取占位符的值。
+				String propVal = placeholderResolver.resolvePlaceholder(placeholder);
+				if (propVal == null && this.valueSeparator != null) {
+					//判断是否有 property-value 的分隔符 如果有，则设置默认值
+					int separatorIndex = placeholder.indexOf(this.valueSeparator);
+					if (separatorIndex != -1) {
+						String actualPlaceholder = placeholder.substring(0, separatorIndex);
+						String defaultValue = placeholder.substring(separatorIndex + this.valueSeparator.length());
+						//获取真正的 property value
+						propVal = placeholderResolver.resolvePlaceholder(actualPlaceholder);
+						if (propVal == null) {
+							propVal = defaultValue;
+						}
+					}
+				}
+				if (propVal != null) {
+					// Recursive invocation, parsing placeholders contained in the
+					// previously resolved placeholder value.
+					// 再次递归解析，如果解析出来的 property-value 中包含的占位符 如 a = ${b},b = ${c},c = c
+					propVal = parseStringValue(propVal, placeholderResolver, visitedPlaceholders);
+					// 将最终的占位符的值进行替换
+					result.replace(startIndex, endIndex + this.placeholderSuffix.length(), propVal);
+					if (logger.isTraceEnabled()) {
+						logger.trace("Resolved placeholder '" + placeholder + "'");
+					}
+					startIndex = result.indexOf(this.placeholderPrefix, startIndex + propVal.length());
+				}
+				else if (this.ignoreUnresolvablePlaceholders) {
+					// Proceed with unprocessed value.
+					startIndex = result.indexOf(this.placeholderPrefix, endIndex + this.placeholderSuffix.length());
+				}
+				else {
+					throw new IllegalArgumentException("Could not resolve placeholder '" +
+							placeholder + "'" + " in value \"" + value + "\"");
+				}
+				visitedPlaceholders.remove(originalPlaceholder);
+			}
+			else {
+				//未找到后缀下标 则将开始下标也置为-1，跳出循环
+				startIndex = -1;
+			}
+		}
+		return result.toString();
+	}
+ ```
+&emsp;&emsp;可以看到解析站位符的方法，其实逻辑上并不复杂，使用递归，解析对应的嵌套占位符。同时使用一个set类型的变量`visitedPlaceholders`存储当前解析的占位符，判断循环依赖的问题。
+
+### ConversionService
+&emsp;&emsp;`ConversionService`用于类型转换的服务接口。这是转换系统的入口点。调用{@link #convert(Object, Class)}来使用这个系统执行线程安全类型转换。
+先看看它的类图：
+![](resource/images/convert.png)
+来说明一下具体几个接口的主要定义：
+* ConditionalConverter:
+&emsp;&emsp;
+* GenericConverter:
+&emsp;&emsp;
+* ConversionService:
+&emsp;&emsp;
+* ConverterRegistry:
+&emsp;&emsp;
+* ConverterFactory:
+&emsp;&emsp;
+我们来看看它的相关方法定义。
+ ```java
+ public interface ConversionService {
+
+	//判断 souceType 能够转换成 targetType
+	boolean canConvert(@Nullable Class<?> sourceType, Class<?> targetType);
+
+	//判断 sourceType 能否转换成 targetType
+	boolean canConvert(@Nullable TypeDescriptor sourceType, TypeDescriptor targetType);
+
+	//将 source 转换为 targetType 类型
+	@Nullable
+	<T> T convert(@Nullable Object source, Class<T> targetType);
+
+	//将类型为 sourceType 的 source 转换为 targetType
+	@Nullable
+	Object convert(@Nullable Object source, @Nullable TypeDescriptor sourceType, TypeDescriptor targetType);
+
+}
+ ```
 
