@@ -584,16 +584,55 @@ public interface PropertySources extends Iterable<PropertySource<?>>
 先看看它的类图：
 ![](resource/images/convert.png)
 来说明一下具体几个接口的主要定义：
-* ConditionalConverter:
-&emsp;&emsp;
-* GenericConverter:
-&emsp;&emsp;
-* ConversionService:
-&emsp;&emsp;
+* **Converter**:
+&emsp;&emsp;转换器将一个类型转换的数据为另外一个类型。同时由于其加了`@FunctionalInterface`注解，因此它是安全的，同时也需要共享。实现它的同时，一般需要实现 `GenericConverter`
+* **GenericConverter**:
+&emsp;&emsp;一个用于一个或多个类型之间转换的通用转换器。
+```java
+ public interface GenericConverter {
+
+	//返回一个可转换的列表
+	@Nullable
+	Set<ConvertiblePair> getConvertibleTypes();
+
+	//将 source Object 转换成 TypeDescriptor 为 targetType；
+	@Nullable
+	Object convert(@Nullable Object source, TypeDescriptor sourceType, TypeDescriptor targetType);
+
+	/**
+	 * Holder for a source-to-target class pair.
+	 */
+	final class ConvertiblePair {
+
+		private final Class<?> sourceType;
+
+		private final Class<?> targetType;
+
+		//
+		public ConvertiblePair(Class<?> sourceType, Class<?> targetType) {
+			Assert.notNull(sourceType, "Source type must not be null");
+			Assert.notNull(targetType, "Target type must not be null");
+			this.sourceType = sourceType;
+			this.targetType = targetType;
+		}
+		...
+	}
+
+ }
+ ```
+&emsp;&emsp;可以看到通用转换器中有个 `ConvertiblePair` ,它的作用就是可以转换的类型。通过方法 getConvertibleTypes 可以知道这个通用转换器 支持哪些类型转换
+* **ConditionalConverter**:
+&emsp;&emsp;一个条件转换接口，允许 Converter,GenericConverter,ConverterFactory 根据 sourceType 和 targetType 的属性 条件转换。 例如 String 转为 Date 当目标使用了 @DateTimeFormat 注释，则实现可能返回true;或者是一个 String 转换成 一个 Account 如果目标 Account 类定义了公共的静态方法 findAccount(String arg),则实现可能会返回true。
+&emsp;&emsp;`ConditionalConverter`的定义很简单，就一个方法,用于判断可以将 sourceType 转换成 targetType
+ ```java
+ boolean matches(TypeDescriptor sourceType, TypeDescriptor targetType);
+ ```
+* **ConverterFactory**:
+&emsp;&emsp;转换器的工厂。其定义也很简单，就是一个获取对应的 `Converter` 的方法
 * ConverterRegistry:
-&emsp;&emsp;
-* ConverterFactory:
-&emsp;&emsp;
+&emsp;&emsp;类型转换系统中转换器的注册器。注册器，就提供一些注册方法和注销方法，主要是一些add和remove 方法，这里就不贴源码了。不过需要注意的一点是， `ConverterRegistry` 同时支持注册 `ConverterFactory`
+* **ConversionService**:
+&emsp;&emsp;用于类型转换服务的接口，整个spring convert系统中的入口，调用 convert(Object,Class)时此系统执行线程安全的类型转换。
 我们来看看它的相关方法定义。
  ```java
  public interface ConversionService {
@@ -614,4 +653,8 @@ public interface PropertySources extends Iterable<PropertySource<?>>
 
 }
  ```
-
+&emsp;&emsp;整个转换系统的入口是 ConversionService 那么我们就来看看，其相关的实现类吧。
+>GenericConversionService
+ ```java
+ 
+ ```
