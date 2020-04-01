@@ -22,7 +22,7 @@
 &emsp;&emsp;从类图上，我们可以看到三个根接口或抽象类：
 
 1. **PropertySource**
-&emsp;&emsp;`PropertySource` 抽象类，定了一个 name/value 的配置类，但是一般不单独使用，而是通过 `PropertySources` 和 PropertyResolver 来处理。我们来看下它的源码：
+&emsp;&emsp;`PropertySource` 抽象类，定了一个 name/value 的配置类，但是一般不单独使用，而是通过 `PropertySources` 和 PropertyResolver 来处理。
 1. **PropertySources**
 &emsp;&emsp;`PropertySources` 是一个接口，包含一个或多个`PropertySource`的持有。其实就是一个 `PropertySource` 的集合接口。
 1. **PropertyResolver**
@@ -629,7 +629,7 @@ public interface PropertySources extends Iterable<PropertySource<?>>
  ```
 * **ConverterFactory**:
 &emsp;&emsp;转换器的工厂。其定义也很简单，就是一个获取对应的 `Converter` 的方法
-* ConverterRegistry:
+* **ConverterRegistry**:
 &emsp;&emsp;类型转换系统中转换器的注册器。注册器，就提供一些注册方法和注销方法，主要是一些add和remove 方法，这里就不贴源码了。不过需要注意的一点是， `ConverterRegistry` 同时支持注册 `ConverterFactory`
 * **ConversionService**:
 &emsp;&emsp;用于类型转换服务的接口，整个spring convert系统中的入口，调用 convert(Object,Class)时此系统执行线程安全的类型转换。
@@ -653,8 +653,4 @@ public interface PropertySources extends Iterable<PropertySource<?>>
 
 }
  ```
-&emsp;&emsp;整个转换系统的入口是 ConversionService 那么我们就来看看，其相关的实现类吧。
->GenericConversionService
- ```java
- 
- ```
+&emsp;&emsp;整个转换系统的入口是 ConversionService 那么我们就来看看。

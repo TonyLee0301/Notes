@@ -10,7 +10,12 @@
       - [2.2 方法 getApplicationListeners(event, type)](#22-方法-getapplicationlistenersevent-type)
   - [3 spring boot 启动过程中的事件](#3-spring-boot-启动过程中的事件)
     - [ starting 事件 ](#div-idstarting-starting-事件-div)
-    - [](#)
+    - [ environmentPrepared 事件 ](#div-idenvironmentprepared-environmentprepared-事件-div)
+    - [ contextPrepared 事件 ](#div-idcontextprepared-contextprepared-事件-div)
+    - [ contextLoaded 事件 ](#div-idcontextloaded-contextloaded-事件-div)
+    - [ started 事件 ](#div-idstarted-started-事件-div)
+    - [ running 事件 ](#div-idrunning-running-事件-div)
+    - [ failed 事件 ](#div-idfailed-failed-事件-div)
 
 <!-- /code_chunk_output -->
 
@@ -85,13 +90,13 @@
  从上面的接口定义中，我们可以看到，`SpringApplicationRunListener` 总共定义了 7 方法，不同的方法在 spring boot 加载的某一个阶段需要进行调用。
  |方法|介绍|
  |--|--|--|
- |starting|`SpringApplication.run`方法第一次启动的时候，就可以立即调用该方法，可用于非常早的初始化|
- |environmentPrepared|在`environment`准备好，`application context`还未创建时|
- |contextPrepared|在`application context`创建、准备后，并在资源还未加载时调用|
- |contextLoaded|在`application context`加载后，在其刷新前调用|
- |started|在`context`刷新后和应用启动后,但是在 `CommandLineRunners` `ApplicationRunner` 调用之前|
- |running|在`application context`刷新并且 `CommandLineRunners` `ApplicationRunner` 调用后 在`SpringApplication.run`方法结束时立即调用
- |failed|在应用程序出现故障时调用|
+ |<a href="#starting">starting</a>|`SpringApplication.run`方法第一次启动的时候，就可以立即调用该方法，可用于非常早的初始化|
+ |<a href="#environmentPrepared">environmentPrepared</a>|在`environment`准备好，`application context`还未创建时|
+ |<a href="#contextPrepared">contextPrepared</a>|在`application context`创建、准备后，并在资源还未加载时调用|
+ |<a href="#contextLoaded">contextLoaded</a>|在`application context`加载后，在其刷新前调用|
+ |<a href="#started">started</a>|在`context`刷新后和应用启动后,但是在 `CommandLineRunners` `ApplicationRunner` 调用之前|
+ |<a href="#running">running</a>|在`application context`刷新并且 `CommandLineRunners` `ApplicationRunner` 调用后 在`SpringApplication.run`方法结束时立即调用
+ |<a href="#failed">failed</a>|在应用程序出现故障时调用|
 
 知道了SpringApplicationRunListener的用途了后，我们再来看看它的具体实现
 
@@ -286,14 +291,22 @@
 内部的一些判断逻辑这里就不做详细说明了，有兴趣的同学可以去看看。(主要是通过查找ApplicationListener的参数类型做的判断)，用到了**适配器模式**。
 
 ## 3 spring boot 启动过程中的事件
-
+在之间介绍 `ApplicationEvent` 和 `ApplicationListener` 时,我们已经了解到了一些相关的
 ### <div id="starting"> starting 事件 </div>
-接下来就是开始启动了，`listeners.starting()`, 该方法，最终由 `EventPublishingRunListner` 封装对应的事件，并委托给 `SimpleApplicationEventMulticaster` 广播出去。
- ```java
- this.initialMulticaster.multicastEvent(new ApplicationStartingEvent(this.application, this.args));
- ```
-在之间介绍 `ApplicationEvent` 和 `ApplicationListener` 时，我们已经了解到了，监听 `ApplicationStartingEvent` 事件的两个 Listener 为：
-* [LoggingApplicationListener](../../Spring%20Source%20Code/Listener/LoggingApplicationListener.md)
+监听 `ApplicationStartingEvent` 事件的两个 Listener 为：
+* [LoggingApplicationListener](../listener/LoggingApplicationListener.md)
 * LiquibaseServiceLocatorApplicationListener
  
-### 
+### <div id="environmentPrepared"> environmentPrepared 事件 </div>
+
+### <div id="contextPrepared"> contextPrepared 事件 </div>
+
+
+### <div id="contextLoaded"> contextLoaded 事件 </div>
+
+### <div id="started"> started 事件 </div>
+
+### <div id="running"> running 事件 </div>
+
+### <div id="failed"> failed 事件 </div>
+
