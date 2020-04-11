@@ -1,4 +1,4 @@
-package info.tonyle.concurrent.objectsharding.visibility;
+package info.tonyle.concurrent.chapter01;
 
 public class NoVisibility {
 

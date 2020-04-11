@@ -1,4 +1,4 @@
-package info.tonyle.concurrent.objectsharding.publish;
+package info.tonyle.concurrent.chapter01;
 
 import info.tonyle.concurrent.UnThreadSafe;
 
