@@ -1,4 +1,4 @@
-package info.tonyle.concurrent.vsibility;
+package info.tonyle.concurrent.objectsharding.publish;
 
 import info.tonyle.concurrent.UnThreadSafe;
 
