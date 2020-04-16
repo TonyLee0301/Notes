@@ -1,8 +1,6 @@
-package info.tonyle.concurrent.chapter01;
+package info.tonyle.concurrent.chapter03;
 
 import info.tonyle.concurrent.UnThreadSafe;
-
-import java.util.Collections;
 
 @UnThreadSafe
 public class UnsafePublish {

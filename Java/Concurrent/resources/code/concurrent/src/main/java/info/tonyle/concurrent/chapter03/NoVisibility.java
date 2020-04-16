@@ -1,4 +1,4 @@
-package info.tonyle.concurrent.chapter01;
+package info.tonyle.concurrent.chapter03;
 
 public class NoVisibility {
 
