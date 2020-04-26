@@ -16,6 +16,9 @@ HELP.md
 *.iws
 *.iml
 *.ipr
+*.class
+target
+build
 
 ### NetBeans ###
 /nbproject/private/
@@ -34,8 +37,3 @@ HELP.md
 .DS_Store
 .AppleDouble
 .LSOverride
-
-# Java
-*.class
-/target
-/build
