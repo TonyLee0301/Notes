@@ -1,7 +1,6 @@
 package info.tonyle.leetcode;
 
-import java.util.List;
-import java.util.Stack;
+import jdk.nashorn.internal.ir.LiteralNode;
 
 /**
  * 给出两个 非空 的链表用来表示两个非负的整数。其中，它们各自的位数是按照 逆序 的方式存储的，并且它们的每个节点只能存储 一位 数字。
@@ -22,10 +21,34 @@ import java.util.Stack;
  */
 public class TwoNumAdd {
     public static ListNode addTwoNumbers(ListNode l1, ListNode l2) {
-        return null;
+        ListNode listNode = new ListNode(0);
+        ListNode q = l1, p = l2, head = listNode;
+        int carry = 0;
+        while(q != null || p != null){
+            int x = q != null ? q.val : 0;
+            int y = p != null ? p.val : 0;
+            int sum = carry + x + y;
+            carry = sum / 10;
+            head.next = new ListNode( sum % 10);
+            head = head.next;
+            q = q != null ? q.next : null;
+            p = p != null ? p.next : null;
+        }
+        if(carry != 0){
+            head.next = new ListNode(carry);
+        }
+        return listNode.next;
     }
 
     public static void main(String[] args) {
+        ListNode tmp;
+        ListNode q = new ListNode(2);
+        tmp = q.next = new ListNode(4);
+        tmp.next = new ListNode(3);
+        ListNode p = new ListNode(5);
+        tmp = p.next = new ListNode(6);
+        tmp.next = new ListNode(4);
+        System.out.println(addTwoNumbers(q,p));
     }
 
     private static class ListNode {
@@ -33,6 +56,14 @@ public class TwoNumAdd {
         ListNode next;
         ListNode(int x){
             val = x;
+        }
+
+        @Override
+        public String toString() {
+            return "ListNode{" +
+                    "val=" + val +
+                    ", next=" + next +
+                    '}';
         }
     }
 }

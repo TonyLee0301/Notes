@@ -35,4 +35,7 @@ HELP.md
 .AppleDouble
 .LSOverride
 
-
+# Java
+.class
+/target
+/build
