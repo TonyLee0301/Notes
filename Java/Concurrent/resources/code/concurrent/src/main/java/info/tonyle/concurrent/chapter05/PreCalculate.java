@@ -6,6 +6,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 
+/**
+ * FutureTask实现了*Future*语义，表示一种抽象的可生成结果的计算[CPJ 4.3.3]
+ */
 public class PreCalculate {
 
     private final FutureTask<Long> futureTask = new FutureTask<Long>(new Callable<Long>() {

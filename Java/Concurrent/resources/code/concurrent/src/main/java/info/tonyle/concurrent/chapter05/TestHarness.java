@@ -1,5 +1,6 @@
 package info.tonyle.concurrent.chapter05;
 
+import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 
 /**
@@ -29,11 +30,18 @@ public class TestHarness {
         endGate.await();
         long endTime = System.nanoTime();
         return endTime - starTime;
+
     }
 
     public static void main(String[] args) throws InterruptedException {
         TestHarness testHarness = new TestHarness();
+        final Random random = new Random();
         long time = testHarness.timeTasks(5,()->{
+            try {
+                Thread.sleep(random.nextInt(5) * 1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
             System.out.println(Thread.currentThread().getName());
         });
         System.out.println(time);
