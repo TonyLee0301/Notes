@@ -4,7 +4,7 @@ import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 
 /**
- * 闭锁
+ * 闭锁 用于控制所有线程等待事件。
  */
 public class TestHarness {
 

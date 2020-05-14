@@ -6,6 +6,9 @@ import java.util.Random;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
 
+/**
+ * 栅栏用于控制所有线程到达栅栏位置才可同时执行
+ */
 public class CalculateAutomata {
 
     private final CyclicBarrier barrier;

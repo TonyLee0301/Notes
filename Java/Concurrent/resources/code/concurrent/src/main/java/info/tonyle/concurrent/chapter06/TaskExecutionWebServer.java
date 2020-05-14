@@ -3,7 +3,6 @@ package info.tonyle.concurrent.chapter06;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.sql.Connection;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
