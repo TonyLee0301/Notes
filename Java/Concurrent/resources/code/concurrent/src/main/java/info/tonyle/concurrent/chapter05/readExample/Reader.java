@@ -13,11 +13,11 @@ public class Reader {
         return Collections.EMPTY_LIST;
     }
 
-}
-class ImageInfo{
-    public ImageData downLoadImage(){
-        return new ImageData();
+    static class ImageInfo{
+        public ImageData downLoadImage(){
+            return new ImageData();
+        }
     }
-}
-class ImageData{
+    static class ImageData{
+    }
 }
