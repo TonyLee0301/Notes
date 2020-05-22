@@ -1,9 +1,6 @@
 package info.tonyle.concurrent.chapter07;
 
-import com.sun.corba.se.pept.broker.Broker;
-
 import java.math.BigInteger;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
 /**
@@ -32,34 +29,5 @@ public class BrokerPrimeProducer extends Thread{
             }
         } catch (InterruptedException e) {
         }
-    }
-
-    private static volatile boolean needPrime = true;
-
-    static void consumerPrimes() throws InterruptedException{
-        BlockingQueue<BigInteger> blockingQueue = new ArrayBlockingQueue<>(10);
-        BrokerPrimeProducer producer = new BrokerPrimeProducer(blockingQueue);
-        producer.start();
-        try{
-            while(needPrime){
-                blockingQueue.take();
-                Thread.sleep(100);
-            }
-        }finally {
-            producer.cancel();
-        }
-    }
-
-    public static void main(String[] args) throws InterruptedException {
-        new Thread(()-> {
-            try {
-                consumerPrimes();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }).start();
-        Thread.sleep(1000);
-        needPrime = false;
-        System.out.println(needPrime);
     }
 }
