@@ -24,6 +24,9 @@
     - [7.3.3 applyPropertyValues](#733-applypropertyvalues)
   - [7.4 初始化 bean](#74-初始化-bean)
     - [7.4.1 激活 Aware 方法](#741-激活-aware-方法)
+    - [7.4.2 处理器的应用](#742-处理器的应用)
+    - [7.4.3 自定义 init 方法](#743-自定义-init-方法)
+  - [7.5 注册 DisposableBean](#75-注册-disposablebean)
 
 <!-- /code_chunk_output -->
 
@@ -1783,3 +1786,101 @@ protected Object initializeBean(final String beanName, final Object bean, @Nulla
  ```
 ### 7.4.1 激活 Aware 方法
 &emsp;&emsp;在分析其原理之前，我们先了解一下Aware的使用。Spring中提供了一些Aware相关接口，比如 BeanFactoryAware 、ApplicationContextAware 、ResourceLoaderAware 、ServletContextAware 等，实现这些Aware接口的bean在初始化之后，可以取得一些相应的资源，例如实现 BeanFactoryAware 的bean，在bean被初始化后，Spring 容器将会注入 BeanFactory 的实例，而实现 ApplicationContextAware 的 bean， 在 bean 被初始后，将会被注入ApplicationContext 的实例等。
+其实Aware的实现就是在初始化bean这个过程中实现的。
+ ```java
+ 	private void invokeAwareMethods(final String beanName, final Object bean) {
+		if (bean instanceof Aware) {
+			if (bean instanceof BeanNameAware) {
+				((BeanNameAware) bean).setBeanName(beanName);
+			}
+			if (bean instanceof BeanClassLoaderAware) {
+				ClassLoader bcl = getBeanClassLoader();
+				if (bcl != null) {
+					((BeanClassLoaderAware) bean).setBeanClassLoader(bcl);
+				}
+			}
+			if (bean instanceof BeanFactoryAware) {
+				((BeanFactoryAware) bean).setBeanFactory(AbstractAutowireCapableBeanFactory.this);
+			}
+		}
+	}
+ ```
+ 
+### 7.4.2 处理器的应用
+&emsp;&emsp;BeanPostProcessor相信大家都不陌生，这是 Spring 中开放式架构中一个必不可少的亮点， 给用户充足的权限去更改或者扩展 Spring，而除了 BeanPostProcessor 外还有很多其他的 PostProcessor ， 当然大部分都是以此为基础， 继承自 BeanPostProcessor 。 BeanPostProcessor 的使用位置就是这里，在调用客户自定义初始化方法前以及调用自定义初始化方法后分别会调用 BeanPostProcessor 的 postProcessBeforelnitialization 和 postProcessAfterlnitialization 方法 ，使用户可以根据自己的业务需求进行响应的处理。
+
+### 7.4.3 自定义 init 方法
+&emsp;&emsp;客户定制的初始化方法除了我们熟知的使用配置 init-method 外，还有使自定义的 bean 实现 InitializingBean 接口，并在 afterPropertiesSet 中实现自己 的初始化业务逻辑。
+&emsp;&emsp;init-method 与 afterPropertiesSet 都是在初始化 bean 时执行，执行顺序是 afterPropertiesSet 先执行，而 init-method后执行。
+&emsp;&emsp;在 invokeInitMethods 方法中就实现了这两个步骤的初始化方法调用。
+ ```java
+ protected void invokeInitMethods(String beanName, final Object bean, @Nullable RootBeanDefinition mbd)
+			throws Throwable {
+		//首先检查是否是 InitializingBean ，如果是的话，需要调用afterPropertiesSet
+		boolean isInitializingBean = (bean instanceof InitializingBean);
+		if (isInitializingBean && (mbd == null || !mbd.isExternallyManagedInitMethod("afterPropertiesSet"))) {
+			if (logger.isTraceEnabled()) {
+				logger.trace("Invoking afterPropertiesSet() on bean with name '" + beanName + "'");
+			}
+			if (System.getSecurityManager() != null) {
+				try {
+					AccessController.doPrivileged((PrivilegedExceptionAction<Object>) () -> {
+						((InitializingBean) bean).afterPropertiesSet();
+						return null;
+					}, getAccessControlContext());
+				}
+				catch (PrivilegedActionException pae) {
+					throw pae.getException();
+				}
+			}
+			else {
+				((InitializingBean) bean).afterPropertiesSet();
+			}
+		}
+
+		//属性初始化后的处理
+		if (mbd != null && bean.getClass() != NullBean.class) {
+			String initMethodName = mbd.getInitMethodName();
+			if (StringUtils.hasLength(initMethodName) &&
+					!(isInitializingBean && "afterPropertiesSet".equals(initMethodName)) &&
+					!mbd.isExternallyManagedInitMethod(initMethodName)) {
+				//调用自定义初始化方法
+				invokeCustomInitMethod(beanName, bean, mbd);
+			}
+		}
+	}
+ ```
+
+## 7.5 注册 DisposableBean
+&emsp;&emsp;Spring中不但提供了对初始化方法的扩展入口，同样也提供了销毁方法的扩展入口，对于销毁方法的扩展，除了我们熟知的配置属性 destroy-method 方法外，用户还可以注册后处理器 DestrucionAwareBeanPostProcessor 来统一处理 bean 的销毁方法，代码如下：
+ ```java
+ protected void registerDisposableBeanIfNecessary(String beanName, Object bean, RootBeanDefinition mbd) {
+		AccessControlContext acc = (System.getSecurityManager() != null ? getAccessControlContext() : null);
+		if (!mbd.isPrototype() && requiresDestruction(bean, mbd)) {
+			if (mbd.isSingleton()) {
+				// Register a DisposableBean implementation that performs all destruction
+				// work for the given bean: DestructionAwareBeanPostProcessors,
+				// DisposableBean interface, custom destroy method.
+				/*
+				 * 单例模式下注册需要销毁的 bean， 此方法中会处理实现 DisposableBean 的bean，
+				 * 并且对所有的 bean 使用DestructionAwarePostProcessors 处理
+				 * DisposableBean DestructionAwareBeanPostProcessors
+				 */
+				registerDisposableBean(beanName,
+						new DisposableBeanAdapter(bean, beanName, mbd, getBeanPostProcessors(), acc));
+			}
+			else {
+				// A bean with a custom scope...
+				/*
+				 * 自定义scope处理
+				 */
+				Scope scope = this.scopes.get(mbd.getScope());
+				if (scope == null) {
+					throw new IllegalStateException("No Scope registered for scope name '" + mbd.getScope() + "'");
+				}
+				scope.registerDestructionCallback(beanName,
+						new DisposableBeanAdapter(bean, beanName, mbd, getBeanPostProcessors(), acc));
+			}
+		}
+	}
+ ```
