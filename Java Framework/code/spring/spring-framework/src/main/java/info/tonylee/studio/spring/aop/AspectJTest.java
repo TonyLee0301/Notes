@@ -6,7 +6,7 @@ import org.aspectj.lang.annotation.*;
 @Aspect
 public class AspectJTest {
 
-    @Pointcut("execution(* *.test(..))")
+    @Pointcut("execution(* *.test*(..))")
     public void test(){
     }
 

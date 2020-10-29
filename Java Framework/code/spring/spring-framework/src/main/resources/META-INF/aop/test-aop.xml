@@ -14,5 +14,5 @@
     <aop:aspectj-autoproxy/>
     <bean id="test" class="info.tonylee.studio.spring.aop.TestBean"/>
     <bean class="info.tonylee.studio.spring.aop.AspectJTest"/>
-
+    <bean class="info.tonylee.studio.spring.aop.BeanPostProcessorTest"/>
 </beans>
