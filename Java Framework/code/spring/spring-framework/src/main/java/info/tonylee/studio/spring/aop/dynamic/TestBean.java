@@ -1,6 +1,5 @@
-package info.tonylee.studio.spring.aop;
+package info.tonylee.studio.spring.aop.dynamic;
 
-import org.springframework.aop.framework.AopContext;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
@@ -25,7 +24,7 @@ public class TestBean {
     }
 
     public static void main(String[] args) {
-        ApplicationContext bf = new ClassPathXmlApplicationContext("/META-INF/aop/test-aop.xml");
+        ApplicationContext bf = new ClassPathXmlApplicationContext("/META-INF/aop_test/test-aop.xml");
         TestBean testBean = bf.getBean(TestBean.class);
         testBean.test();
         System.out.println("--------------");

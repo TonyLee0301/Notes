@@ -1,4 +1,4 @@
-package info.tonylee.studio.spring.aop.jdkDynamic;
+package info.tonylee.studio.spring.aop.dynamic.jdkDynamic;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;

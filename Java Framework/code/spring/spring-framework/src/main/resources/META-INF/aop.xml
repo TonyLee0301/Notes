@@ -1,0 +1,10 @@
+<!DOCTYPE aspectj PUBLIC "-//AspectJ//DTD//EN" "http://www.eclipse.org/aspectj/dtd/aspectj.dtd">
+<aspectj>
+    <weaver>
+        <include within="info.tonylee.studio.spring.aop.*"/>
+    </weaver>
+
+    <aspects>
+        <aspect name="info.tonylee.studio.spring.aop.dynamic.AspectJTest"/>
+    </aspects>
+</aspectj>

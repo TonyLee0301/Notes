@@ -1,4 +1,4 @@
-package info.tonylee.studio.spring.aop;
+package info.tonylee.studio.spring.aop.dynamic;
 
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.*;

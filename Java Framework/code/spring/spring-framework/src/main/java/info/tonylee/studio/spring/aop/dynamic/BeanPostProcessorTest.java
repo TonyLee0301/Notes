@@ -1,4 +1,4 @@
-package info.tonylee.studio.spring.aop;
+package info.tonylee.studio.spring.aop.dynamic;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.BeanPostProcessor;

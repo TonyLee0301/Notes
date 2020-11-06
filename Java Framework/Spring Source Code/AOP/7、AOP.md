@@ -12,7 +12,18 @@
   - [7.3 创建 AOP 代理](#73-创建-aop-代理)
     - [7.3.1 获取增强器](#731-获取增强器)
       - [1 普通增强器的获取](#1-普通增强器的获取)
-      - [2](#2)
+      - [2 增加同步实例化增强器](#2-增加同步实例化增强器)
+    - [3 获取 DeclareParents 注解](#3-获取-declareparents-注解)
+    - [7.3.2 寻找匹配的增强器](#732-寻找匹配的增强器)
+    - [7.3.3 创建代理](#733-创建代理)
+      - [1. 创建代理](#1-创建代理)
+      - [2. 获取代理](#2-获取代理)
+      - [2. CGLIB使用示例。](#2-cglib使用示例)
+  - [7.4 静态AOP使用示例](#74-静态aop使用示例)
+  - [7.5 创建 AOP 静态代理](#75-创建-aop-静态代理)
+    - [7.5.1 Instrumentation 使用](#751-instrumentation-使用)
+    - [7.5.2 自定义标签](#752-自定义标签)
+    - [7.5.3 织入](#753-织入)
 
 <!-- /code_chunk_output -->
 
@@ -618,7 +629,7 @@ after1
  ```
 > ReflectiveAspectJAdvisorFactory
  ```java
- 	@Override
+	@Override
 	@Nullable
 	public Advice getAdvice(Method candidateAdviceMethod, AspectJExpressionPointcut expressionPointcut,
 			MetadataAwareAspectInstanceFactory aspectInstanceFactory, int declarationOrder, String aspectName) {
@@ -765,7 +776,7 @@ public class MethodBeforeAdviceInterceptor implements MethodInterceptor, BeforeA
 * AspectJAfterAdvice
 &emsp;&emsp;后置增强器与前置增强器有稍许不一致的地方。回顾之前讲解的前置增强器，大致的结构是在拦截器链中放置 MethodBeforeAdviceInterceptor， 而 MethodBeforeAdviceInterceptor 中又放置了 AspectJMethodBeforeAdvice ，并在调用 invoke 时首先串联调用。但是在后置增强器的时候却不一样，没有提供中间的类，而是直接在拦截器链中使用了中间的 AspectJAfterAdvice。
  ```java
- public class AspectJAfterAdvice extends AbstractAspectJAdvice
+  public class AspectJAfterAdvice extends AbstractAspectJAdvice
 		implements MethodInterceptor, AfterAdvice, Serializable {
 
 	public AspectJAfterAdvice(
@@ -798,6 +809,7 @@ public class MethodBeforeAdviceInterceptor implements MethodInterceptor, BeforeA
 
 }
  ```
+
 #### 2 增加同步实例化增强器
 &emsp;&emsp;如果寻找的增强器不为空而且又配置了增强延迟初始化，那么久需要在首位加入同步实例化增强器。同步实例化增强器 SyntheticInstantiationAdvisor 如下：
  ```java
@@ -1555,3 +1567,285 @@ info.tonylee.studio.spring.aop.cglib.EnhancerDemo$$EnhancerByCGLIB$$a6c4833f@7fb
 &emsp;&emsp;上述的实现与JDK实现代理中的invoke方法大同小异，都是首先构造链，然后封装此链进行串行调用，稍有区别就是在JDK中直接构造 ReflectiveMethodInvocation，而在cglib中使用 CglibMethodInvocation 。CglibMethodInvocation 继承自 ReflectiveMethodInvocation，但是proceed方法并没有重写。
 
 ## 7.4 静态AOP使用示例
+&emsp;&emsp;加载时织入(Load-Time Weaving, LTW) 指的是在虚拟机载入字节码文件时动态织入 AspectJ 切面。 Spring 框架的值添加为 AspectJ LTW 在动态织入过程中提供了更细粒度的控制。
+使用 Java(5+) 的代理能使用一个叫 "Vanilla" 的AspectJ LTW， 这需要在启动 JVM 的时候将某个JVM参数设置为开。这种JVM范围的设置在一些情况下或许不错，但通常情况下显得有些粗颗粒。而用Spring的LTW能让你在per-ClassLoader的基础上打开LTW，这显然更加细粒度并且对“单JVM多应用”的环境更具意义（例如在一个典型应用服务器中）。另外，在某些环境下，这能让你使用 LTW而不对引用服务器的启动脚本做任何改动，不然则需要添加-javaagent:path/to/aspectjweaver.jar 或者 （以下将会提及） -javaagent:path/toSpring-agent.jar。开发人员只需简单修改应用上下文的一个或几个文件就能使用LtW，而不需依靠那些管理者部署配置，比如启动脚本的系统管理员。
+
+## 7.5 创建 AOP 静态代理
+&emsp;&emsp;AOP的静态代理主要是在虚拟机启动时通过改变目标字节码的方式来完成对目标对象的增强，它与动态代理相比更具有更高的效率，因为在动态代理调用的过程中，还需要一个动态创建代理类并代理目标对象的步骤，而静态代理这是在启动时便完成了字节码增强，当系统再次调用目标类时与调用正常的类并无差别，所以在效率上会相对更高些。
+### 7.5.1 Instrumentation 使用
+&emsp;&emsp;Java 在 1.5 引入 java.lang.instrument， 你可以由此实现一个 Java agent， 通过此 agent 来修改类的字节码即改变一个类。通过 Java Instrument 实现一个简单的profiler。当然 instrument 并不限于 profiler， instrument 可以做很多事情，它类似一种更低级、更耦合的AOP，可以从底层来改变一个类的行为。你可以由此产生无限的遐想。接下来要做得事情，就是计算一个方法所花的事件，通常我们会在代码中按一下方式编写。
+&emsp;&emsp;在方法开头加入 long stime = System.nanoTime(); 在方法结尾通过 System.nanoTime()-stime 得出方法所花事件。你不得不在想监控的每个方法中写入重复代码，好一点的情况，你可以用 AOP 来做这事，但总感觉有点别扭，这种 profiler 的代码还是要打包在你的项目中，Java Instrument 使得这一切更干净。
+1. 写 ClassFileTransformer 类
+ ```java
+ public class PerfMonXformer implements ClassFileTransformer {
+    @Override
+    public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] classfileBuffer) throws IllegalClassFormatException {
+        byte[] transformed = null;
+        ClassPool pool = ClassPool.getDefault();
+        CtClass cl = null;
+        try {
+            cl = pool.makeClass(new java.io.ByteArrayInputStream(classfileBuffer));
+            if(cl.isInterface() == false) {
+                CtBehavior[] methods = cl.getDeclaredBehaviors();
+                for(int i = 0; i < methods.length; i++) {
+                    if(methods[i].isEmpty() == false) {
+                        doMethod(methods[i]);
+                    }
+                }
+                transformed = cl.toBytecode();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }finally {
+            if(cl != null){
+                cl.detach();
+            }
+        }
+        return transformed;
+    }
+
+    private void doMethod(CtBehavior method) throws CannotCompileException {
+        method.addLocalVariable("stime", CtClass.longType);
+        method.insertBefore("stime = System.nanoTime();");
+        method.insertAfter("System.out.println(\"leave " + method.getName() + " and time:\"+ (System.nanoTime()-stime));");
+    }
+}
+ ```
+
+2. 编写 agent 类
+ ```java
+ public class PerfMonAgent {
+    private static Instrumentation inst = null;
+
+    /**
+     * 当此代理程序指定给Java VM时，将在调用应用程序的主方法之前调用此方法。
+     * @param agentArgs
+     * @param _inst
+     */
+    public static void premain(String agentArgs, Instrumentation _inst){
+        System.out.println("PerfMonAgent.premain() was called.");
+        inst = _inst;
+        ClassFileTransformer trans = new PerfMonXformer();
+        System.out.println("Adding a PerfMonXformer instance to the JVM");
+        inst.addTransformer(trans);
+    }
+}
+ ```
+&emsp;&emsp;以上两个类就是 agent 的核心了，JVM 启动时在应用程序加载前会调用 PerMonAgent.premain,然后 PerfMonAgent.premain 中实例化了一个定制的 ClassFileTransforme， 即 PerfMonXformer 并通过 inst.addTransformer(trans)把PerfMonXformer的实例加入 Instrumentation 实例(由JVM传入)，这就使得应用中的类加载时，PerfMonXformer.transform 都会被调用，你在此方法中可以改变加载的类。真的有点神奇，为了改变类的字节码，我们使用了 JBoss 的 Javassist，虽然你不一定要这么用，但 JBoss 的 Javassist 真的很强大，能让你很容易地改变类的字节码。在上面的方法中我通过类的字节码，在每个类的的方法前后加入了执行时间。
+3. 打包agent
+对于 agent 的打包，有点讲究。
+* JAR 的META-INF/MAINIFEST.MF 加入 Premain-Class:xx,xx 在此语境中就是我们的 agent 类， 即 info.tonylee.studio.spring.aop.javassist.PerfMonAgent 。
+* 如果你的 agent 类引入别的包，需使用 Boot-Class-Path:xx,xx在此语境中就是上面提到的 JBoss javassit。
+4. 打包应用
+&emsp;&emsp;Java 选项中有 -javaagent:xx ，其中 xx 就是 agentJAR， Java 通过此选项加载 agent，由agent 来监控 classpath 下的应用。
+&emsp;&emsp;最后的执行结果：
+PerfMonAgent.premain() was called.
+Adding a PerfMonXformer instance to the JVM
+Transforming info/tonylee/studio/spring/aop/javassist/AppAgent
+Hello World!
+leave test and time:70224
+leave main and time:109741
+
+&emsp;&emsp;由此结果可以看出，执行顺序以及通过改变 class 的字节码加入监控代码确实生效了。你也可以实现，通过 Instrment 实现 agent 使得监控代码和应用代码完全隔离了。
+&emsp;&emsp;通过之前的两个小示例我们似乎已经有所体会，在 Spring 中的静态 AOP 字节使用了 AspectJ 提供的方法， 而 AspectJ 又是在 Instrument 基础上进行的封装。就以上的例子来看，至少在 AspectJ中会有如下功能。
+* 读取 META-INF/aop.xml
+* 将aop.xml中的定义的增强器通过自定义的 ClassFileTransformer 织入对应的类中。
+&emsp;&emsp;当然这些都是 AspectJ 所做的事情，并不在我们讨论的范畴， Spring 是字节使用 AspectJ ，也就是将动态代理的任务字节委托给了 AspectJ，那么，Spring 怎么嵌入 AspectJ 的呢？同样我们还是从配置文件入手。
+
+### 7.5.2 自定义标签
+&emsp;&emsp;在 Spring 中如果需要使用 AspectJ 的功能，首先要做得第一步就是在配置文件中加入配置：<context:load-time-weaver />。我们根据之前介绍的自定义命名空间的只是便可以推断，应用AspectJ的入口便是这里，可以通过查找 load-time-weaver 来找到对应的自定义命名处理类。
+&emsp;&emsp;我们找到ContextNamespaceHandler，在其中有一段函数。
+ ```java
+ public class ContextNamespaceHandler extends NamespaceHandlerSupport {
+
+	@Override
+	public void init() {
+		registerBeanDefinitionParser("property-placeholder", new PropertyPlaceholderBeanDefinitionParser());
+		registerBeanDefinitionParser("property-override", new PropertyOverrideBeanDefinitionParser());
+		registerBeanDefinitionParser("annotation-config", new AnnotationConfigBeanDefinitionParser());
+		registerBeanDefinitionParser("component-scan", new ComponentScanBeanDefinitionParser());
+		registerBeanDefinitionParser("load-time-weaver", new LoadTimeWeaverBeanDefinitionParser());
+		registerBeanDefinitionParser("spring-configured", new SpringConfiguredBeanDefinitionParser());
+		registerBeanDefinitionParser("mbean-export", new MBeanExportBeanDefinitionParser());
+		registerBeanDefinitionParser("mbean-server", new MBeanServerBeanDefinitionParser());
+	}
+
+}
+ ```
+&emsp;&emsp;继续跟进 LoadTimeWeaverBeanDefinitionParser ，作为 BeanDefinitionParser 接口的实现类，它的核心逻辑是从 parse 函数开始的，而经过父类的封装，LoadTimeWeaverBeanDefinitionParser 类的核心实现被转移到了 doParse 函数中，如下：
+ ```java
+ 	@Override
+	protected void doParse(Element element, ParserContext parserContext, BeanDefinitionBuilder builder) {
+		builder.setRole(BeanDefinition.ROLE_INFRASTRUCTURE);
+		//aspectj-weaving
+		if (isAspectJWeavingEnabled(element.getAttribute(ASPECTJ_WEAVING_ATTRIBUTE), parserContext)) {
+			//org.springframework.context.config.internalAspectJWeavingEnabler
+			if (!parserContext.getRegistry().containsBeanDefinition(ASPECTJ_WEAVING_ENABLER_BEAN_NAME)) {
+				//"org.springframework.context.weaving.AspectJWeavingEnabler
+				RootBeanDefinition def = new RootBeanDefinition(ASPECTJ_WEAVING_ENABLER_CLASS_NAME);
+				parserContext.registerBeanComponent(
+						new BeanComponentDefinition(def, ASPECTJ_WEAVING_ENABLER_BEAN_NAME));
+			}
+
+			if (isBeanConfigurerAspectEnabled(parserContext.getReaderContext().getBeanClassLoader())) {
+				new SpringConfiguredBeanDefinitionParser().parse(element, parserContext);
+			}
+		}
+	}
+ ```
+&emsp;&emsp;其实之前解析在分析动态AOP也就是在分析 <aop:aspectj-autoproxy />中已经提到了自定义配置的解析流程，对于 <aop:aspectj-autoproxy /> 的解析无非就是就是以标签作为标志，进而进行相关处理类的注册，那么对于自定义标签<context:load-time-weaver />其实是起到了同样的作用。
+&emsp;&emsp;上面函数的核心作用其实就是注册一个对于 AspectJ 处理的类 org.springframework.context.weaving.AspectJWeavingEnabler，它的注册流程如下：
+1. 是否开启 AspectJ。
+&emsp;&emsp;是否开启 AspectJ。
+&emsp;&emsp;之前虽然反复提到了在配置文件中加入了 <context:load-time-weaver/>便相当于加入了AspectJ开关。但是，并不是配置了这个标签就以为着开启了 AspectJ 功能呢，这个标签中还有一个属性aspectj-weaving，这个属性有3个备选，no，off和autodetect，默认为 autodetect，也就是说，如果我们只是使用了<context:load-time-weaver />,那么Spring会帮助我们检测是否可以使用 AspectJ 功能，而检测的依据便是文件META-INF/aop.xml是否存在，看看在 Spring 中的实现方式。
+ ```java
+ 	protected boolean isAspectJWeavingEnabled(String value, ParserContext parserContext) {
+		if ("on".equals(value)) {
+			return true;
+		}
+		else if ("off".equals(value)) {
+			return false;
+		}
+		else {
+			// Determine default...
+			ClassLoader cl = parserContext.getReaderContext().getBeanClassLoader();
+			return (cl != null && cl.getResource(AspectJWeavingEnabler.ASPECTJ_AOP_XML_RESOURCE) != null);
+		}
+	}
+ ```
+2. 将 org.springframework.context.weaving.AspectJWeavingEnabler 封装在 BeanDefinition 中注册。
+&emsp;&emsp;当通过 AspectJ 功能验证后便可以进行 AspectJWeavingEnabler 的注册了，注册方式很简单，无非就是将类路径注册的新初始化的 RootBeanDefinition 中，在 RootBeanDefinition 的获取时会转换成对应的 class 。
+&emsp;&emsp;尽管在 init 方法中注册了 AspectJWeavingEnabler，但是对于标签本身 Spring 会以 bean 的形式保存，也就是当 Spring 解析到 <context:load-time-weaver />标签的时候会产生一个bean，这个bean中的信息是是什么？ 在LoadTimeWeaverBeanDefinitionParser类中有这样的函数：
+ ```java
+ 	@Override
+	protected String getBeanClassName(Element element) {
+		//weaver-class
+		if (element.hasAttribute(WEAVER_CLASS_ATTRIBUTE)) {
+			return element.getAttribute(WEAVER_CLASS_ATTRIBUTE);
+		}
+		//org.springframework.context.weaving.DefaultContextLoadTimeWeaver
+		return DEFAULT_LOAD_TIME_WEAVER_CLASS_NAME;
+	}
+
+	@Override
+	protected String resolveId(Element element, AbstractBeanDefinition definition, ParserContext parserContext) {
+		//loadTimeWeaver
+		return ConfigurableApplicationContext.LOAD_TIME_WEAVER_BEAN_NAME;
+	}
+ ```
+&emsp;&emsp;以上信息我们可以推断，当 Spring 在读取到自定义标签<context:load-time-weaver />后会产生一个bean，而这个bean的 id 为 loadTimeWeaver，class 为 org.springframework.context.weaving.DefaultContextLoadTimeWeaver ，也就是完成了 DefaultContextLoadTimeWeaver 类的注册。
+&emsp;&emsp;完成了以上的注册功能后，并不意味这在 Spring 中就可以使用 AspectJ 了，因为我们还有一个很重要的步骤忽略了，就是 LoadTimeWeaverAwareProcessor 的注册。 在 AbstractApplicationContext 的 prepareBeanFactory 函数中有这样一段代码：
+ ```java
+ 		// Detect a LoadTimeWeaver and prepare for weaving, if found.
+		// 增加对AspectJ的支持
+		if (beanFactory.containsBean(LOAD_TIME_WEAVER_BEAN_NAME)) {
+			beanFactory.addBeanPostProcessor(new LoadTimeWeaverAwareProcessor(beanFactory));
+			// Set a temporary ClassLoader for type matching.
+			beanFactory.setTempClassLoader(new ContextTypeMatchClassLoader(beanFactory.getBeanClassLoader()));
+		}
+ ```
+&emsp;&emsp;在 AbstractApplicationContext 中的 prepareBeanFactory 函数是在容器初始是否调用的，就是说只有注册了 LoadTimeWeaverAwareProcessor 才会激活整个 AspectJ 的功能。
+
+### 7.5.3 织入
+&emsp;&emsp;当我们完成了所有的 AspectJ 的准备工作后便可以进入织入分析了，首先还是从 LoadTimeWeaverAwareProcessor 开始。
+&emsp;&emsp; LoadTimeWeaverAwareProcessor 实现 BeanPostProcessor 方法，那么对于 BeanPostProcessor 接口来讲， postProcessBeforeInitialization 与 postProcessAfterInitialization 有着特殊意义，也就是说在 所有 bean 的初始化之前和之后都会分别调用对应的方法，那么 LoadTimeWeaverAwareProcessor 中的 postProcessBeforeInitialization 函数中完成了什么样的逻辑呢？
+ ```java
+ 	@Override
+	public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
+		if (bean instanceof LoadTimeWeaverAware) {
+			LoadTimeWeaver ltw = this.loadTimeWeaver;
+			if (ltw == null) {
+				Assert.state(this.beanFactory != null,
+						"BeanFactory required if no LoadTimeWeaver explicitly specified");
+				ltw = this.beanFactory.getBean(
+						ConfigurableApplicationContext.LOAD_TIME_WEAVER_BEAN_NAME, LoadTimeWeaver.class);
+			}
+			((LoadTimeWeaverAware) bean).setLoadTimeWeaver(ltw);
+		}
+		return bean;
+	}
+ ```
+&emsp;&emsp;在 LoadTimeWeaverAwareProcessor 中的 postProcessBeforeInitialization 函数中，该后置处理器只针对 LoadTimeWeaverAware 起作用，纵观所有bean，实现 LoadTimeWeaverAware 接口的类只有 AspectJWeavingEnabler 。
+&emsp;&emsp;当在 Spring 中调用 AspectJWeavingEnabler 时， this.loadTimeWeaver 尚位初始化，那么，会直接调用 beanFactory.getBean 方法获取对应的 DefaultContextLoadTimeWeaver 类型的 bean ,并将其设置为 AspectJWeavingEnabler 类型 bean 的 loadTimeWeaver 属性中。当然 AspectJWeavingEnabler 同样实现了 BeanClassLoaderAware 以及 Ordered 接口，实现 BeanClassLoaderAware 接口保证了在 bean 初始化的时候调用 AbstractAutowireCapableBeanFactory 的 invokeAwareMethods 的时候将 beanClassLoader 赋值给当前类。而实现 Ordered 接口则保证在实例化 bean 时当前bean会被最先初始化。
+&emsp;&emsp;而 DefaultContextLoadTimeWeaver 类又同时实现了 LoadTimeWeaver、BeanClassLoaderAware 以及 DisposableBean 。其中 DisposableBean 接口保证在 bean 销毁时会调用 destory 方法进行 bean 的清理，而 BeanClassLoaderAware 接口保证在 bean 初始化调用 AbstractAutowireCapableBeanFactory 的 invokeAwareMethods 时调用 setBeanClassLoader 方法。
+ ```java
+ 	@Override
+	public void setBeanClassLoader(ClassLoader classLoader) {
+		LoadTimeWeaver serverSpecificLoadTimeWeaver = createServerSpecificLoadTimeWeaver(classLoader);
+		if (serverSpecificLoadTimeWeaver != null) {
+			if (logger.isDebugEnabled()) {
+				logger.debug("Determined server-specific load-time weaver: " +
+						serverSpecificLoadTimeWeaver.getClass().getName());
+			}
+			this.loadTimeWeaver = serverSpecificLoadTimeWeaver;
+		}
+		else if (InstrumentationLoadTimeWeaver.isInstrumentationAvailable()) {
+			logger.debug("Found Spring's JVM agent for instrumentation");
+			this.loadTimeWeaver = new InstrumentationLoadTimeWeaver(classLoader);
+		}
+		else {
+			try {
+				this.loadTimeWeaver = new ReflectiveLoadTimeWeaver(classLoader);
+				if (logger.isDebugEnabled()) {
+					logger.debug("Using reflective load-time weaver for class loader: " +
+							this.loadTimeWeaver.getInstrumentableClassLoader().getClass().getName());
+				}
+			}
+			catch (IllegalStateException ex) {
+				throw new IllegalStateException(ex.getMessage() + " Specify a custom LoadTimeWeaver or start your " +
+						"Java virtual machine with Spring's agent: -javaagent:spring-instrument-{version}.jar");
+			}
+		}
+	}
+ ```
+&emsp;&emsp;上面代码有一句很关键的代码 this.loadTimeWeaver = new InstrumentationLoadTimeWeaver(classLoader);
+&emsp;&emsp;这句代码不仅仅是实例化了一个 InstrumentationLoadTimeWeaver 类型的实例，而且在实例化过程中还做了一些额外的操作。
+&emsp;&emsp;在实例化的过程中会对当前的 this.instrumentation = getInstrumentation() 进行初始化，也就是说在 InstrumentationLoadTimeWeaver 实例化后其属性 Instrumentation 已经被初始化为代表着当前虚拟机的实例了。综合我们讲过的例子，对于注册转换器，如 addTransformer 函数等，便可以直接使用此属性进行操作了。
+&emsp;&emsp;也就是经过以上程序的处理后，在 Spring 中的 bean 之间的关系如下。
+* AspectJWeavingEnabler 类型的 bean 中 的loadTimeWeaver 属性被初始化为 DefaultContextLoadTimeWeaver 类型的 bean。
+* DefaultContextLoadTimeWeaver 类型的 bean 中的 loadTimeWeaver 属性被初始化为 InstrumentationLoadTimeWeaver。
+&emsp;&emsp;因为 AspectJWeavingEnabler 类同样实现了 BeanFactoryPostProcessor，所以当所有 bean 解析结束后会调用其 postProcessBeanFactory 方式。
+ ```java
+ 	@Override
+	public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException {
+		enableAspectJWeaving(this.loadTimeWeaver, this.beanClassLoader);
+	}
+
+	public static void enableAspectJWeaving(
+			@Nullable LoadTimeWeaver weaverToUse, @Nullable ClassLoader beanClassLoader) {
+
+		if (weaverToUse == null) {
+			//此时已经被初始化为 DefaultContextLoadTimeWeaver
+			if (InstrumentationLoadTimeWeaver.isInstrumentationAvailable()) {
+				weaverToUse = new InstrumentationLoadTimeWeaver(beanClassLoader);
+			}
+			else {
+				throw new IllegalStateException("No LoadTimeWeaver available");
+			}
+		}
+		// 使用 DefaultContextLoadTimeWeaver 类型的 ben 中的loadTimeWeaver 属性注册转换器
+		weaverToUse.addTransformer(
+				new AspectJClassBypassingClassFileTransformer(new ClassPreProcessorAgentAdapter()));
+	}
+
+	private static class AspectJClassBypassingClassFileTransformer implements ClassFileTransformer {
+
+		private final ClassFileTransformer delegate;
+
+		public AspectJClassBypassingClassFileTransformer(ClassFileTransformer delegate) {
+			this.delegate = delegate;
+		}
+
+		@Override
+		public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined,
+				ProtectionDomain protectionDomain, byte[] classfileBuffer) throws IllegalClassFormatException {
+
+			if (className.startsWith("org.aspectj") || className.startsWith("org/aspectj")) {
+				return classfileBuffer;
+			}
+			// 委托给 AspectJ 代理继续处理
+			return this.delegate.transform(loader, className, classBeingRedefined, protectionDomain, classfileBuffer);
+		}
+	}
+ ```
+&emsp;&emsp;AspectJClassBypassingClassFileTransformer 的作用仅仅是告诉 AspectJ 以及 org.aspectj 开头的或者 org/aspectj 开头的类不进行处理。

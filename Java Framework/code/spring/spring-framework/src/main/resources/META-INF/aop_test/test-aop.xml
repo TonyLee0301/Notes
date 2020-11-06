@@ -12,7 +12,8 @@
                         http://www.springframework.org/schema/context/spring-context-3.0.xsd">
 
     <aop:aspectj-autoproxy/>
-    <bean id="test" class="info.tonylee.studio.spring.aop.TestBean"/>
-    <bean class="info.tonylee.studio.spring.aop.AspectJTest"/>
-    <bean class="info.tonylee.studio.spring.aop.BeanPostProcessorTest"/>
+    <bean id="test" class="info.tonylee.studio.spring.aop.dynamic.TestBean"/>
+    <bean class="info.tonylee.studio.spring.aop.dynamic.AspectJTest"/>
+    <bean class="info.tonylee.studio.spring.aop.dynamic.BeanPostProcessorTest"/>
+    <context:load-time-weaver />
 </beans>

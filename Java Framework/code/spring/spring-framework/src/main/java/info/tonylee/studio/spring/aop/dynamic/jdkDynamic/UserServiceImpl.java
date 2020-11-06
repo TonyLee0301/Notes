@@ -1,4 +1,4 @@
-package info.tonylee.studio.spring.aop.jdkDynamic;
+package info.tonylee.studio.spring.aop.dynamic.jdkDynamic;
 
 public class UserServiceImpl implements UserService {
     public void add() {
