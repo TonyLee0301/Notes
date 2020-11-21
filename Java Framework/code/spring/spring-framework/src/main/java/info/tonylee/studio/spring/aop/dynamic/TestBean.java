@@ -20,15 +20,17 @@ public class TestBean {
 
     public void test1(){
         System.out.println("test1");
-//        ((TestBean)AopContext.currentProxy()).test();
+        test();
     }
 
     public static void main(String[] args) {
         ApplicationContext bf = new ClassPathXmlApplicationContext("/META-INF/aop_test/test-aop.xml");
         TestBean testBean = bf.getBean(TestBean.class);
+        System.out.println(testBean);
         testBean.test();
         System.out.println("--------------");
         testBean.test1();
+
     }
 
 }

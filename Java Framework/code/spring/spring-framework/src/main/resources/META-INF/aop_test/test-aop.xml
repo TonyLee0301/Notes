@@ -15,5 +15,5 @@
     <bean id="test" class="info.tonylee.studio.spring.aop.dynamic.TestBean"/>
     <bean class="info.tonylee.studio.spring.aop.dynamic.AspectJTest"/>
     <bean class="info.tonylee.studio.spring.aop.dynamic.BeanPostProcessorTest"/>
-    <context:load-time-weaver />
+<!--    <context:load-time-weaver />-->
 </beans>

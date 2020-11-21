@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--这里的 namespace 必须是 UserMapper 接口的路径，不然运行的时候要报错  "is not know to MapperRegistry"-->
+<mapper namespace="info.tonylee.studio.spring.mybatis.UserMapper">
+    <!-- 这里的id必须和UserMapper接口中的接口方法名相同，不然运行的时候也要报错 -->
+    <insert id="insertUser" parameterType="User">
+        insert into user(name,age) values(#{name},#{age})
+    </insert>
+    <select id="getUser" resultType="User" parameterType="java.lang.Integer">
+        select * from user where id = #{id}
+    </select>
+</mapper>
