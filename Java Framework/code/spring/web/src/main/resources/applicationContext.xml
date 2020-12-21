@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <bean id="viewResolver" class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+        <property name="prefix" value="/WEB-INF/jsp/"/>
+        <property name="suffix" value=".jsp"/>
+    </bean>
+
+    <bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+        <property name="maxUploadSize">
+            <value>10000</value>
+        </property>
+    </bean>
+
+   <!-- <bean id="localeResolver" class="org.springframework.web.servlet.i18n.AcceptHeaderLocaleResolver"/>
+    <bean id="localeResolver" class="org.springframework.web.servlet.i18n.SessionLocaleResolver" />
+    <bean id="localeResolver" class="org.springframework.web.servlet.i18n.CookieLocaleResolver" />
+    <bean id="themeSource" class="org.springframework.ui.context.support.ResourceBundleThemeSource">
+        <property name="basenamePrefix" value="info.test."></property>
+    </bean>
+    <bean id="themeResolver" class="org.springframework.web.servlet.theme.FixedThemeResolver">
+        <property name="defaultThemeName" value="summer"/>
+    </bean>
+    <bean id="themeResolver" class="org.springframework.web.servlet.theme.CookieThemeResolver">
+        <property name="defaultThemeName" value="summer"/>
+    </bean>
+    <bean id="themeResolver" class="org.springframework.web.servlet.theme.SessionThemeResolver">
+        <property name="defaultThemeName" value="summer"/>
+    </bean>
+    <bean id="themeChangeInterceptor" class="org.springframework.web.servlet.theme.ThemeChangeInterceptor">
+        <property name="paramName" value="themeName"></property>
+    </bean>-->
+</beans>

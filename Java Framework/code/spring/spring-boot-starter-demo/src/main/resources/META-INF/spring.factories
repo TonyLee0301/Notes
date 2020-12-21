@@ -1,0 +1,2 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+  info.tonylee.studio.spring.boot.starter.HelloServiceAutoConfiguration
