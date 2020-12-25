@@ -2,6 +2,21 @@
 
 <!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
 
+<!-- code_chunk_output -->
+
+- [14 Spring Boot 体系原理](#14-spring-boot-体系原理)
+  - [14.1 Spring Boot 源码安装](#141-spring-boot-源码安装)
+  - [14.2 第一个 Starter](#142-第一个-starter)
+  - [14.3 探索 SpringApplication 启动 Spring](#143-探索-springapplication-启动-spring)
+    - [14.3.1 SpringContext 创建](#1431-springcontext-创建)
+    - [14.3.2 bean 的加载](#1432-bean-的加载)
+    - [14.3.3 Spring 扩展属性的加载](#1433-spring-扩展属性的加载)
+    - [14.3.4 总结](#1434-总结)
+  - [14.4 Starter 自动化配置原理](#144-starter-自动化配置原理)
+    - [14.4.1 spring.factories 的加载](#1441-springfactories-的加载)
+
+<!-- /code_chunk_output -->
+
 &emsp;&emsp;Spring Boot 是由 Pivotal 团队提供的全新框架，其设计目的是用来简化新 Spring 应用的初始搭建以及开发过程。该框架使用了特定的方式来进行配置，从而使开发人员不再需要定义样板化的配置。通过这种方式，Spring Boot 将致力于在蓬勃发展的快速应用开发领域(Rapid Application Developmenet)成为领导者。
 &emsp;&emsp;Spring Boot 特点如下：
 * 创建独立的Spring应用程序；
@@ -234,4 +249,246 @@ public class SpringBootDemoApplication {
 		return (ConfigurableApplicationContext) BeanUtils.instantiateClass(contextClass);
 	}
  ```
-&emsp;&emsp;
+&emsp;&emsp;这个函数的作用，就是判断当前应该初始化哪个Spring Context；
+
+### 14.3.2 bean 的加载
+&emsp;&emsp;继续看prepareContext
+ ```java
+    private void prepareContext(ConfigurableApplicationContext context, ConfigurableEnvironment environment,
+			SpringApplicationRunListeners listeners, ApplicationArguments applicationArguments, Banner printedBanner) {
+		context.setEnvironment(environment);
+		postProcessApplicationContext(context);
+		applyInitializers(context);
+		listeners.contextPrepared(context);
+		if (this.logStartupInfo) {
+			logStartupInfo(context.getParent() == null);
+			logStartupProfileInfo(context);
+		}
+		// Add boot specific singleton beans
+		ConfigurableListableBeanFactory beanFactory = context.getBeanFactory();
+		beanFactory.registerSingleton("springApplicationArguments", applicationArguments);
+		if (printedBanner != null) {
+			beanFactory.registerSingleton("springBootBanner", printedBanner);
+		}
+		if (beanFactory instanceof DefaultListableBeanFactory) {
+			((DefaultListableBeanFactory) beanFactory)
+					.setAllowBeanDefinitionOverriding(this.allowBeanDefinitionOverriding);
+		}
+		if (this.lazyInitialization) {
+			context.addBeanFactoryPostProcessor(new LazyInitializationBeanFactoryPostProcessor());
+		}
+		// Load the sources
+		Set<Object> sources = getAllSources();
+		Assert.notEmpty(sources, "Sources must not be empty");
+		load(context, sources.toArray(new Object[0]));
+		listeners.contextLoaded(context);
+	}
+ ```
+&emsp;&emsp;我们先看看load函数。
+ ```java
+ /**
+	 * Load beans into the application context.
+	 * @param context the context to load beans into
+	 * @param sources the sources to load
+	 */
+	protected void load(ApplicationContext context, Object[] sources) {
+		if (logger.isDebugEnabled()) {
+			logger.debug("Loading source " + StringUtils.arrayToCommaDelimitedString(sources));
+		}
+		BeanDefinitionLoader loader = createBeanDefinitionLoader(getBeanDefinitionRegistry(context), sources);
+		if (this.beanNameGenerator != null) {
+			loader.setBeanNameGenerator(this.beanNameGenerator);
+		}
+		if (this.resourceLoader != null) {
+			loader.setResourceLoader(this.resourceLoader);
+		}
+		if (this.environment != null) {
+			loader.setEnvironment(this.environment);
+		}
+		loader.load();
+	}
+ ```
+&emsp;&emsp;这里主要就是创建了一个 BeanDefinitionLoader 然后调用 load ，我们先来看看 BeanDefinitionLoader 是个什么东西。
+ ```java
+ class BeanDefinitionLoader {
+
+	private final Object[] sources;
+
+	private final AnnotatedBeanDefinitionReader annotatedReader;
+
+	private final XmlBeanDefinitionReader xmlReader;
+
+	private BeanDefinitionReader groovyReader;
+
+	private final ClassPathBeanDefinitionScanner scanner;
+
+	private ResourceLoader resourceLoader;
+    BeanDefinitionLoader(BeanDefinitionRegistry registry, Object... sources) {
+		Assert.notNull(registry, "Registry must not be null");
+		Assert.notEmpty(sources, "Sources must not be empty");
+		this.sources = sources;
+		this.annotatedReader = new AnnotatedBeanDefinitionReader(registry);
+		this.xmlReader = new XmlBeanDefinitionReader(registry);
+		if (isGroovyPresent()) {
+			this.groovyReader = new GroovyBeanDefinitionReader(registry);
+		}
+		this.scanner = new ClassPathBeanDefinitionScanner(registry);
+		this.scanner.addExcludeFilter(new ClassExcludeFilter(sources));
+	}
+    //...省略其他代码
+ }
+ ```
+&emsp;&emsp;看到 BeanDefinitionLoader 这个类的时候，相信其实就可以猜到了，这是bean的加载逻辑了。它封装了 Spring 常见的几种bean加载方式。
+### 14.3.3 Spring 扩展属性的加载
+ ```java
+    protected void refresh(ApplicationContext applicationContext) {
+		Assert.isInstanceOf(AbstractApplicationContext.class, applicationContext);
+		((AbstractApplicationContext) applicationContext).refresh();
+	}
+ ```
+&emsp;&emsp;对于Spring的扩展属性加载则更为简单，因为这些都是 Spring 本身原有的东西，Spring Boot 仅仅是使用refersh激活一下而已。
+### 14.3.4 总结
+&emsp;&emsp;分析下来，Spring Boot 的启动并不是我们相像的那么神秘，按照约定大于配置的原则，内置了Spring原有的启动类，并在启动的时候启动及刷新，仅此而已。
+
+
+## 14.4 Starter 自动化配置原理
+&emsp;&emsp;我们已经知道了Spring Boot如何启动Spring，但是目前为止我们并没有揭开Spring Boot的面纱，究竟Starter是如何生效的呢？这些逻辑现在看来只能体现在注解SpringBootApplication本身了。
+&emsp;&emsp;继续查看代码，看下SpringBootApplication注解内容：
+ ```java
+ @Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+@Inherited
+@SpringBootConfiguration
+@EnableAutoConfiguration
+@ComponentScan(excludeFilters = { @Filter(type = FilterType.CUSTOM, classes = TypeExcludeFilter.class),
+		@Filter(type = FilterType.CUSTOM, classes = AutoConfigurationExcludeFilter.class) })
+public @interface SpringBootApplication {
+    //忽略其他代码
+}
+ ```
+&emsp;&emsp;这里我们更关注 SpringBootApplication 上的注解内容，因为注解具有传递性，EnableAutoConfiguration 是一个非常特别的注解，它是 Spring Boot 的全局开关，如果把这个注解去掉，则一切Starter都会失效，这就是约定大于配置的潜规则，那么，Spring Boot 的核心很可能就隐藏在这个注解里面：
+ ```java
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+@Inherited
+@AutoConfigurationPackage
+@Import(AutoConfigurationImportSelector.class)
+public @interface EnableAutoConfiguration {
+
+	String ENABLED_OVERRIDE_PROPERTY = "spring.boot.enableautoconfiguration";
+
+	/**
+	 * Exclude specific auto-configuration classes such that they will never be applied.
+	 * @return the classes to exclude
+	 */
+	Class<?>[] exclude() default {};
+
+	/**
+	 * Exclude specific auto-configuration class names such that they will never be
+	 * applied.
+	 * @return the class names to exclude
+	 * @since 1.3.0
+	 */
+	String[] excludeName() default {};
+
+}
+ ```
+
+### 14.4.1 spring.factories 的加载
+&emsp;&emsp;顺着思路，我们可以看到 AutoConfigurationImportSelector 实现的是 ImportSelector。ImportSelector 只定义了一个方法 selectImports 。接下来我们就来看看 AutoConfigurationImportSelector 类的selectImports方法：
+ ```java
+    @Override
+	public String[] selectImports(AnnotationMetadata annotationMetadata) {
+		if (!isEnabled(annotationMetadata)) {
+			return NO_IMPORTS;
+		}
+		AutoConfigurationMetadata autoConfigurationMetadata = AutoConfigurationMetadataLoader
+				.loadMetadata(this.beanClassLoader);
+		AutoConfigurationEntry autoConfigurationEntry = getAutoConfigurationEntry(autoConfigurationMetadata,
+				annotationMetadata);
+		return StringUtils.toStringArray(autoConfigurationEntry.getConfigurations());
+	}
+
+    /**
+	 * Return the {@link AutoConfigurationEntry} based on the {@link AnnotationMetadata}
+	 * of the importing {@link Configuration @Configuration} class.
+	 * @param autoConfigurationMetadata the auto-configuration metadata
+	 * @param annotationMetadata the annotation metadata of the configuration class
+	 * @return the auto-configurations that should be imported
+	 */
+	protected AutoConfigurationEntry getAutoConfigurationEntry(AutoConfigurationMetadata autoConfigurationMetadata,
+			AnnotationMetadata annotationMetadata) {
+		if (!isEnabled(annotationMetadata)) {
+			return EMPTY_ENTRY;
+		}
+		AnnotationAttributes attributes = getAttributes(annotationMetadata);
+		List<String> configurations = getCandidateConfigurations(annotationMetadata, attributes);
+		configurations = removeDuplicates(configurations);
+		Set<String> exclusions = getExclusions(annotationMetadata, attributes);
+		checkExcludedClasses(configurations, exclusions);
+		configurations.removeAll(exclusions);
+		configurations = filter(configurations, autoConfigurationMetadata);
+		fireAutoConfigurationImportEvents(configurations, exclusions);
+		return new AutoConfigurationEntry(configurations, exclusions);
+	}
+ ```
+&emsp;&emsp;上面是一段核心代码，可以帮我们解释很多问题。在上面的函数中，有一个是我们比较关注的 getCandidateConfigurations 函数：
+ ```java
+    protected List<String> getCandidateConfigurations(AnnotationMetadata metadata, AnnotationAttributes attributes) {
+		List<String> configurations = SpringFactoriesLoader.loadFactoryNames(getSpringFactoriesLoaderFactoryClass(),
+				getBeanClassLoader());
+		Assert.notEmpty(configurations, "No auto configuration classes found in META-INF/spring.factories. If you "
+				+ "are using a custom packaging, make sure that file is correct.");
+		return configurations;
+	}
+ ```
+&emsp;&emsp;从上面的函数中我们看到了 META-INF/spring.factories,在我们之前的演示环节中，按照约定大于配置的原则，Starter 如果要生效必须要在 META-INF文件下建立 spring.factories 文件，并把相关的配置类声明在里面，虽然这仅仅是一个报错异常，但是其实我们已经可以推断出这一定的逻辑处理之处了，继续进入 SpringFactiresLoader 类：
+ ```java
+ 
+    public static final String FACTORIES_RESOURCE_LOCATION = "META-INF/spring.factories";
+
+    public static List<String> loadFactoryNames(Class<?> factoryType, @Nullable ClassLoader classLoader) {
+		String factoryTypeName = factoryType.getName();
+		return loadSpringFactories(classLoader).getOrDefault(factoryTypeName, Collections.emptyList());
+	}
+
+	private static Map<String, List<String>> loadSpringFactories(@Nullable ClassLoader classLoader) {
+		MultiValueMap<String, String> result = cache.get(classLoader);
+		if (result != null) {
+			return result;
+		}
+
+		try {
+			Enumeration<URL> urls = (classLoader != null ?
+					classLoader.getResources(FACTORIES_RESOURCE_LOCATION) :
+					ClassLoader.getSystemResources(FACTORIES_RESOURCE_LOCATION));
+			result = new LinkedMultiValueMap<>();
+			while (urls.hasMoreElements()) {
+				URL url = urls.nextElement();
+				UrlResource resource = new UrlResource(url);
+				Properties properties = PropertiesLoaderUtils.loadProperties(resource);
+				for (Map.Entry<?, ?> entry : properties.entrySet()) {
+					String factoryTypeName = ((String) entry.getKey()).trim();
+					for (String factoryImplementationName : StringUtils.commaDelimitedListToStringArray((String) entry.getValue())) {
+						result.add(factoryTypeName, factoryImplementationName.trim());
+					}
+				}
+			}
+			cache.put(classLoader, result);
+			return result;
+		}
+		catch (IOException ex) {
+			throw new IllegalArgumentException("Unable to load factories from location [" +
+					FACTORIES_RESOURCE_LOCATION + "]", ex);
+		}
+	}
+ ```
+&emsp;&emsp;至此，我们终于明白了为什么 Starter 的生效必须要依赖于配置 META-INF/spring.factories 文件，因为在启动过程中有一个硬编码的逻辑就是会扫描各个包中的对应文件，并把配置捞取出去，但是，捞取出来后又是怎么跟 Spring 整合的呢？或者说 AutoConfigurationImportSelector.selectImports 方法后把加载的类又委托给谁继续处理呢呢？
+![](resources/invokeAutoConfigurationImportSelector.png)
+&emsp;&emsp;上图中梳理了 ApplicationContext 到 AutoConfigurationImportSelector 的调用链路，当然这个链路还有很多的额外分支被忽略。但至少我们可以看到 AutoConfigurationImportSelector 与 Spring 的整合过程，在这个调用链中最核心的就是 Spring Boot 使用了 Spring 提供 BeanDefinitionRegistryPostProcessor 扩展点并实现了 ConfigurationClassPostProcessor 类，从而实现了 Spring 之上的一系列逻辑扩展，让我们看一下 ConfigurationClassPostProcessor 的继承关系，如下图：
+![](resources/ConfigurationClassPostProcessor.png)
+
+### 14.4.3 配置类的解析
+&emsp;&emsp;截止到目前我们知道了 Starter 为什么邀请默认将自身入口配置写在 META-INF 文件下的 spring.factories 文件中，以及 AutoConfigurationImportSelector 的上下文调用链路，但是通过 AutoConfigurationImportSelector.selectImports 方法返回后的配置类又是如何进一步处理的呢？我们抽出 ConfigurationClassParser 的 processDeferredImportSelectors 方法代码查看：
