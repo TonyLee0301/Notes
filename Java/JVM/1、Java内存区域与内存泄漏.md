@@ -1,34 +1,7 @@
 
 <!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
 
-<!-- code_chunk_output -->
 
-- [1 Java内存区域与内存溢出异常](#1-java内存区域与内存溢出异常)
-  - [1.1 概述](#11-概述)
-  - [1.2 运行时数据区域](#12-运行时数据区域)
-    - [1.2.1 程序计数器 Program Counter Register](#121-程序计数器-program-counter-register)
-    - [1.2.2 Java虚拟机栈 Java Virtual Machine Stacks](#122-java虚拟机栈-java-virtual-machine-stacks)
-    - [1.2.3 本地方法栈 Native Method Stack](#123-本地方法栈-native-method-stack)
-    - [1.2.4 Java堆 Java Heap](#124-java堆-java-heap)
-    - [1.2.5 方法区 Method Area](#125-方法区-method-area)
-      - [1.2.5.1 运行时常量池 Runtime Constant Pool](#1251-运行时常量池-runtime-constant-pool)
-    - [1.2.6 直接内存 Direct Memory](#126-直接内存-direct-memory)
-  - [1.3 HotSpot虚拟机对象探秘](#13-hotspot虚拟机对象探秘)
-    - [1.3.1 对象的创建](#131-对象的创建)
-    - [1.3.2 对象的内存布局](#132-对象的内存布局)
-      - [1 对象头](#1-对象头)
-        - [1.1 Mark Word](#11-mark-word)
-        - [1.2 类型指针](#12-类型指针)
-      - [2 实例数据](#2-实例数据)
-      - [3 对齐填充](#3-对齐填充)
-    - [1.3.3 对象的访问定位](#133-对象的访问定位)
-  - [1.4 实战 OutOfMemoryError 异常](#14-实战-outofmemoryerror-异常)
-    - [1.4.1 Java堆溢出](#141-java堆溢出)
-    - [1.4.2 虚拟机栈和本地方法栈溢出](#142-虚拟机栈和本地方法栈溢出)
-    - [1.4.3 方法区和运行时常量池溢出](#143-方法区和运行时常量池溢出)
-    - [1.4.4 本地直接内存溢出](#144-本地直接内存溢出)
-
-<!-- /code_chunk_output -->
 # 1 Java内存区域与内存溢出异常
 &emsp;&emsp; Java 与 C++ 之间有一堵由内存动态分配和垃圾收集技术所围成的“高墙”，墙外面的人想进去，墙里面的人却想出来。
 ## 1.1 概述
